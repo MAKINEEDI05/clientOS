@@ -13,8 +13,10 @@ import { MemoryToggle } from '../components/MemoryToggle';
 import { GenerationProgress } from '../components/GenerationProgress';
 import { RecommendationChange } from '../components/RecommendationChange';
 import { ClientContextBar } from '../components/ClientContextBar';
+import { ProjectContextSelector } from '../components/ProjectContextSelector';
 import { EmptyState, ErrorState } from '../components/States';
 import { forgetDirection, recallDirection, rememberDirection } from '../lib/lastDirection';
+import { flattenProjectMemory, splitRelevant } from '../lib/memoryCounts';
 import type { ConflictScope, Recommendation, ResolveConflictResult } from '../types/api';
 
 const DEFAULT_REQUEST = 'Create the next homepage direction.';
@@ -46,7 +48,9 @@ export function AIWorkspace() {
   const { status: health } = useMemoryHealth();
 
   const clientState = useAsync((s) => clients.get(clientId, s), [clientId]);
-  const { activeProject, activeProjectId } = useActiveProject(clientState.data?.projects);
+  const { activeProject, activeProjectId, setActiveProject } = useActiveProject(
+    clientState.data?.projects,
+  );
 
   const projectState = useAsync(
     (s) => projects.get(activeProjectId, s),
@@ -78,6 +82,17 @@ export function AIWorkspace() {
     rememberDirection(activeProjectId, response.summary);
     return response;
   });
+
+  // Switching project switches memory context, so anything on screen from the
+  // previous project is no longer about the project now named above it.
+  const resetAsk = ask.reset;
+  useEffect(() => {
+    setResult(null);
+    setFeedbackDone(false);
+    setLastResolution(null);
+    setSupersededSummary(null);
+    resetAsk();
+  }, [activeProjectId, resetAsk]);
 
   // Drives the workflow-status list while the single backend call is in flight.
   const startedAt = useRef(0);
@@ -118,8 +133,12 @@ export function AIWorkspace() {
   if (!clientState.data) return null;
 
   const { client } = clientState.data;
+  const projectList = clientState.data.projects;
   const pendingConflicts = conflictState.data?.conflicts ?? [];
   const memoryCount = projectState.data?.memoryCount ?? 0;
+  // What that number is made of — this project's own decisions plus the
+  // client-wide ones. Derived from the returned memories, not assumed.
+  const relevant = splitRelevant(flattenProjectMemory(projectState.data?.memory));
   const interactionCount = activeProject?.interactionCount ?? 0;
   const memoryConnected = health?.connected ?? false;
   const memoryHref = `/clients/${clientId}/memory${activeProject ? `?project=${activeProject.slug}` : ''}`;
@@ -139,12 +158,25 @@ export function AIWorkspace() {
     <div className="mx-auto max-w-3xl space-y-8">
       <ClientContextBar
         clientName={client.name}
-        projectName={activeProject.name}
+        projectControl={
+          <ProjectContextSelector
+            projects={projectList}
+            activeId={activeProjectId}
+            onSelect={setActiveProject}
+            id="ai-project-context"
+          />
+        }
         memoryCount={memoryCount}
+        relevant={relevant}
         interactionCount={interactionCount}
         memoryConnected={memoryConnected}
         memoryEnabled={useMemory}
       />
+
+      <p className="-mt-6 text-xs leading-relaxed text-ink-muted">
+        Project decisions + applicable client-wide preferences. Other projects for{' '}
+        {client.name} are not used.
+      </p>
 
       {/* Memory must be settled before a recommendation can be trusted. */}
       {pendingConflicts.length > 0 && (
@@ -153,6 +185,7 @@ export function AIWorkspace() {
             <ConflictCard
               key={conflict.id}
               conflict={conflict}
+              projectName={activeProject.name}
               oldMemory={findOldMemory(conflict, memoryState.data?.memories)}
               pending={resolve.pending}
               error={resolve.errorMessage}
@@ -176,6 +209,7 @@ export function AIWorkspace() {
 
       {supersededSummary && supersededSummary !== result?.summary && (
         <RecommendationChange
+          projectName={activeProject.name}
           before={supersededSummary}
           after={result?.summary ?? null}
           regenerating={ask.pending}
@@ -366,8 +400,8 @@ export function AIWorkspace() {
           <p className="mt-1.5 max-w-prose text-sm leading-relaxed text-ink-muted">
             {memoryCount === 0 ? (
               <>
-                This project has no recorded decisions yet, so the first direction will be
-                generic.{' '}
+                {activeProject.name} has no recorded decisions yet, so the first direction will
+                be generic.{' '}
                 <Link to={`/clients/${clientId}`} className="font-medium text-accent underline">
                   Add client feedback
                 </Link>{' '}
@@ -375,11 +409,13 @@ export function AIWorkspace() {
               </>
             ) : (
               <>
-                ClientOS will use this client's previous decisions when memory is enabled —{' '}
+                ClientOS will use{' '}
                 <span className="font-medium text-ink-soft">
-                  {memoryCount} memor{memoryCount === 1 ? 'y' : 'ies'}
+                  {memoryCount} relevant memor{memoryCount === 1 ? 'y' : 'ies'}
                 </span>{' '}
-                available across {interactionCount} interaction{interactionCount === 1 ? '' : 's'}.
+                for {activeProject.name} — {relevant.project} decided on this project and{' '}
+                {relevant.clientWide} that {relevant.clientWide === 1 ? 'applies' : 'apply'} to all
+                of {client.name}'s work.
               </>
             )}
           </p>

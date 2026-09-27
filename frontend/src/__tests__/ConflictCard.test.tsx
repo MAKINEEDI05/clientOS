@@ -2,45 +2,18 @@ import { describe, test, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ConflictCard, findOldMemory } from '../components/ConflictCard';
-import type { Conflict, MemoryItem } from '../types/api';
-
-function conflict(over: Partial<Conflict> = {}): Conflict {
-  return {
-    id: 'c1',
-    status: 'pending',
-    newStatement: 'The client is now open to brighter accent colours.',
-    newMemoryType: 'preference_change',
-    oldStatement: 'The client wants to avoid bright, saturated colours.',
-    oldMemoryId: 'mem_old',
-    oldMemoryRefId: 'ref_old',
-    explanation: 'The new feedback conflicts with an existing client preference for this scope.',
-    interactionLabel: 'Revision #6',
-    resolvedScope: null,
-    resolution: null,
-    createdAt: '2026-09-26T10:00:00Z',
-    resolvedAt: null,
-    ...over,
-  };
-}
+import { conflict, memory as baseMemory } from '../test/fixtures';
+import type { MemoryItem } from '../types/api';
 
 function memory(over: Partial<MemoryItem> = {}): MemoryItem {
-  return {
+  return baseMemory({
     id: 'ref_old',
     hindsightMemoryId: 'mem_old',
     memoryType: 'rejection',
     statement: 'The client wants to avoid bright, saturated colours.',
-    scope: 'project',
-    state: 'valid',
-    tags: [],
-    confidence: 0.95,
     sourceQuote: 'avoid bright, saturated colours',
-    occurredAt: '2026-06-15T10:00:00Z',
-    interaction: { id: 'i1', label: 'Design Review #1', labelDisplay: 'Design Review #1', source: 'design-review' },
-    sourceLabelDisplay: 'Design Review #1',
-    supersedes: [],
-    supersededBy: null,
     ...over,
-  };
+  });
 }
 
 const base = {
@@ -211,6 +184,49 @@ describe('ConflictCard — actions', () => {
   test('renders a resolution error', () => {
     render(<ConflictCard conflict={conflict()} {...base} error="Already resolved." />);
     expect(screen.getByRole('alert')).toHaveTextContent('Already resolved.');
+  });
+});
+
+/**
+ * A conflict already belongs to a project, so the card SHOWS the project and does
+ * not offer a way to change it. How widely the change applies is a separate
+ * decision, made with the scope options.
+ */
+describe('ConflictCard — project context', () => {
+  test('names the project the conflict was raised on', () => {
+    render(<ConflictCard conflict={conflict()} {...base} projectName="Premium Website Redesign" />);
+    expect(screen.getByText('Project')).toBeInTheDocument();
+    expect(screen.getByText('Premium Website Redesign')).toBeInTheDocument();
+  });
+
+  test('offers no way to change the project — a conflict belongs to one', () => {
+    render(<ConflictCard conflict={conflict()} {...base} projectName="Premium Website Redesign" />);
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    // The only radiogroup here is the scope decision, not a project chooser.
+    expect(screen.getAllByRole('radiogroup')).toHaveLength(1);
+    expect(screen.getByRole('radiogroup')).toHaveAccessibleName(/how should this change apply/i);
+  });
+
+  test('keeps the scope options separate from the project it belongs to', async () => {
+    const user = userEvent.setup();
+    const onResolve = vi.fn();
+    render(<ConflictCard conflict={conflict()} {...base} onResolve={onResolve} projectName="Mobile App" />);
+
+    // The scope choice is about reach, and says so.
+    expect(screen.getByText(/how far the preference reaches/i)).toBeInTheDocument();
+
+    // Choosing a scope resolves the conflict; it never changes the project.
+    await user.click(screen.getByRole('radio', { name: /all future projects/i }));
+    await user.click(screen.getByRole('button', { name: /apply preference change/i }));
+
+    expect(onResolve).toHaveBeenCalledWith('new_preference', 'future');
+    expect(screen.getByText('Mobile App')).toBeInTheDocument();
+  });
+
+  test('omits the project block rather than guessing when none is given', () => {
+    render(<ConflictCard conflict={conflict()} {...base} />);
+    expect(screen.queryByText('Project')).not.toBeInTheDocument();
   });
 });
 

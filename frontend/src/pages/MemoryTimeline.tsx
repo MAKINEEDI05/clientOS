@@ -4,6 +4,7 @@ import { useAsync, useMutation } from '../hooks/useAsync';
 import { useActiveProject } from '../hooks/useActiveProject';
 import { clients, memories as memoriesApi, projects } from '../services/clientos';
 import { MemoryCard } from '../components/MemoryCard';
+import { ProjectContextSelector } from '../components/ProjectContextSelector';
 import { ConfirmDialog } from '../components/Modal';
 import { EmptyState, ErrorState, LoadingState } from '../components/States';
 import { formatDate } from '../lib/format';
@@ -15,32 +16,57 @@ import type { MemoryItem, MemoryType } from '../types/api';
  *
  * Superseded memories stay visible with their replacement linked — that is the
  * visible proof that ClientOS preserves history rather than overwriting it.
+ *
+ * The default view is the active project's own decisions plus the client-wide
+ * ones that apply to it: exactly the context a recommendation for that project
+ * would draw on. The wider views are opt-in, and never lose project ownership.
  */
+type View = 'project' | 'client-wide' | 'all';
+
+const VIEWS: Array<{ value: View; label: string }> = [
+  { value: 'project', label: 'This project' },
+  { value: 'client-wide', label: 'Client-wide' },
+  { value: 'all', label: 'All client memory' },
+];
+
 export function MemoryTimeline() {
   const { clientId = '' } = useParams();
+  const [view, setView] = useState<View>('project');
   const [typeFilter, setTypeFilter] = useState<MemoryType | 'all'>('all');
   const [showRetired, setShowRetired] = useState(true);
   const [pendingRetire, setPendingRetire] = useState<MemoryItem | null>(null);
 
   const clientState = useAsync((s) => clients.get(clientId, s), [clientId]);
-  const { activeProject, activeProjectId } = useActiveProject(clientState.data?.projects);
+  const { activeProject, activeProjectId, setActiveProject } = useActiveProject(
+    clientState.data?.projects,
+  );
 
-  const memoryState = useAsync(
+  // The project view already returns this project's memories AND the client-wide
+  // ones, so the client-wide view is a filter on it rather than another request.
+  const projectMemoryState = useAsync(
     (s) => projects.memory(activeProjectId, '', s),
     [activeProjectId],
     { enabled: Boolean(activeProjectId) },
+  );
+  // Every project's memory. Fetched only when asked for — it is never the default.
+  const clientMemoryState = useAsync(
+    (s) => clients.memory(clientId, s),
+    [clientId],
+    { enabled: view === 'all' },
   );
 
   const retire = useMutation(async (memoryId: string) => {
     const res = await memoriesApi.invalidate(memoryId);
     setPendingRetire(null);
-    memoryState.reload();
+    projectMemoryState.reload();
+    clientMemoryState.reload();
     return res;
   });
 
   const restore = useMutation(async (memoryId: string) => {
     const res = await memoriesApi.restore(memoryId);
-    memoryState.reload();
+    projectMemoryState.reload();
+    clientMemoryState.reload();
     return res;
   });
 
@@ -49,26 +75,89 @@ export function MemoryTimeline() {
     return <ErrorState error={clientState.error} onRetry={clientState.reload} />;
   }
 
-  const all = memoryState.data?.memories ?? [];
+  const source = view === 'all' ? clientMemoryState : projectMemoryState;
+  const projectScoped = projectMemoryState.data?.memories ?? [];
+  const all =
+    view === 'all'
+      ? clientMemoryState.data?.memories ?? []
+      : view === 'client-wide'
+        ? projectScoped.filter((m) => m.project === null)
+        : projectScoped;
+
   const visible = all.filter(
     (m) => (typeFilter === 'all' || m.memoryType === typeFilter) && (showRetired || m.state === 'valid'),
   );
   const groups = groupByMonth(visible);
   const supersededIds = new Set(all.flatMap((m) => m.supersedes.map((s) => s.memoryRefId)));
+  const clientName = clientState.data?.client.name;
+  const projectList = clientState.data?.projects ?? [];
 
   return (
     <div className="space-y-6">
       <header>
         <p className="eyebrow">Memory timeline</p>
-        <h1 className="mt-1 font-display text-2xl tracking-tight text-ink">
-          {clientState.data?.client.name}
-          {activeProject && <span className="text-ink-muted"> · {activeProject.name}</span>}
-        </h1>
+        <h1 className="mt-1 font-display text-2xl tracking-tight text-ink">{clientName}</h1>
+
+        {projectList.length > 0 && (
+          <div className="mt-3">
+            <ProjectContextSelector
+              projects={projectList}
+              activeId={activeProjectId}
+              onSelect={setActiveProject}
+              id="timeline-project-context"
+            />
+          </div>
+        )}
+
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-muted">
+          {view === 'project' && (
+            <>
+              Decisions for {activeProject?.name ?? 'this project'}, plus the client-wide ones that
+              apply to all of {clientName}'s work. This is the context a recommendation for this
+              project draws on.
+            </>
+          )}
+          {view === 'client-wide' && (
+            <>
+              Decisions that belong to {clientName} rather than to one project. Each is stored
+              once and applies to every project.
+            </>
+          )}
+          {view === 'all' && (
+            <>
+              Every decision recorded for {clientName}, across all projects and labelled by the
+              project that decided it. Recommendations never use another project's decisions —
+              this view is for looking back.
+            </>
+          )}
+        </p>
         <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink-muted">
-          How this client's decisions evolved. Superseded preferences stay visible — ClientOS
-          retires them from reasoning without erasing the record.
+          Superseded preferences stay visible — ClientOS retires them from reasoning without
+          erasing the record.
         </p>
       </header>
+
+      <div role="tablist" aria-label="Memory view" className="flex flex-wrap gap-1.5">
+        {VIEWS.map((v) => {
+          const isActive = view === v.value;
+          return (
+            <button
+              key={v.value}
+              role="tab"
+              type="button"
+              aria-selected={isActive}
+              onClick={() => setView(v.value)}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                isActive
+                  ? 'bg-accent-soft text-accent'
+                  : 'text-ink-muted hover:bg-paper-sunken hover:text-ink'
+              }`}
+            >
+              {v.label}
+            </button>
+          );
+        })}
+      </div>
 
       {all.length > 0 && (
         <div className="card flex flex-wrap items-end gap-4 p-3.5">
@@ -101,12 +190,17 @@ export function MemoryTimeline() {
         </div>
       )}
 
-      {memoryState.loading && <LoadingState label="Loading memory timeline" />}
-      {memoryState.error !== null && (
-        <ErrorState error={memoryState.error} onRetry={memoryState.reload} />
+      {source.loading && <LoadingState label="Loading memory timeline" />}
+      {source.error !== null && <ErrorState error={source.error} onRetry={source.reload} />}
+
+      {source.data && all.length === 0 && view === 'client-wide' && (
+        <EmptyState
+          title="No client-wide decisions yet"
+          description="Nothing has been recorded as applying to every project for this client. A preference becomes client-wide when you confirm that a change applies beyond the project it came from."
+        />
       )}
 
-      {memoryState.data && all.length === 0 && (
+      {source.data && all.length === 0 && view !== 'client-wide' && (
         <EmptyState
           title="No memories yet"
           description="Record what the client told you and ClientOS will extract the durable decisions from it. Nothing is invented — if the feedback carries no decision, nothing is stored."
@@ -114,7 +208,7 @@ export function MemoryTimeline() {
         />
       )}
 
-      {memoryState.data && all.length > 0 && visible.length === 0 && (
+      {source.data && all.length > 0 && visible.length === 0 && (
         <EmptyState title="Nothing matches this filter" description="Try clearing the type filter." />
       )}
 
@@ -157,6 +251,7 @@ export function MemoryTimeline() {
                   </div>
                   <MemoryCard
                     memory={m}
+                    activeProjectId={activeProjectId}
                     onRetire={setPendingRetire}
                     onRestore={(mem) => void restore.run(mem.id)}
                     busy={retire.pending || restore.pending}
@@ -185,6 +280,12 @@ export function MemoryTimeline() {
               <blockquote className="my-3 border-l-2 border-black/10 pl-3 text-ink">
                 {pendingRetire.statement}
               </blockquote>
+            )}
+            {pendingRetire?.project === null && (
+              <p className="mb-3 text-ink-muted">
+                This is a client-wide decision, so retiring it affects every project for{' '}
+                {clientName}.
+              </p>
             )}
             <p className="text-ink-muted">
               It stays on this timeline as history and can be restored at any time. Nothing is

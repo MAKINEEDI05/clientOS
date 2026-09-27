@@ -44,7 +44,7 @@ export function findOldMemory(
 }
 
 export function ConflictCard({
-  conflict, onResolve, pending, error, oldMemory,
+  conflict, onResolve, pending, error, oldMemory, projectName,
 }: {
   conflict: Conflict;
   onResolve: (resolution: 'new_preference' | 'keep_existing', scope?: ConflictScope) => void;
@@ -52,6 +52,12 @@ export function ConflictCard({
   error: string | null;
   /** Provenance for the previous decision, when we hold a record of it. */
   oldMemory?: MemoryItem | null;
+  /**
+   * The project this conflict was raised on. Shown, never chosen: a conflict
+   * already belongs to a project, and how widely the change applies is the
+   * separate decision below.
+   */
+  projectName?: string | null;
 }) {
   const [scope, setScope] = useState<ConflictScope | null>(null);
   const isScopeOnly = conflict.oldMemoryId === null;
@@ -61,6 +67,12 @@ export function ConflictCard({
     <section aria-labelledby={headingId} className="overflow-hidden rounded-2xl border border-black/[0.09] bg-paper shadow-card">
       {/* Header */}
       <div className="border-b border-black/[0.06] bg-paper-sunken px-5 py-4 sm:px-6">
+        {projectName && (
+          <div className="mb-3">
+            <p className="eyebrow">Project</p>
+            <p className="mt-0.5 text-sm font-medium text-ink">{projectName}</p>
+          </div>
+        )}
         <p className="eyebrow text-accent">
           {isScopeOnly ? 'Scope confirmation needed' : 'Client preference changed'}
         </p>
@@ -111,7 +123,10 @@ export function ConflictCard({
         {/* Scope — the primary decision */}
         <fieldset className="mt-6" disabled={pending}>
           <legend className="eyebrow mb-0.5">How should this change apply?</legend>
-          <p className="mb-3 text-xs text-ink-muted">Choose one to continue.</p>
+          <p className="mb-3 text-xs leading-relaxed text-ink-muted">
+            Choose one to continue. This is about how far the preference reaches — not which
+            project you are working on.
+          </p>
 
           <div role="radiogroup" aria-label="How should this change apply?" className="space-y-1.5">
             {SCOPE_OPTIONS.map((option) => {

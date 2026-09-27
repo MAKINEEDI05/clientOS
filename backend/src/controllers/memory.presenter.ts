@@ -24,6 +24,12 @@ export function presentMemory(m: TimelineMemory, links: LinkPair[]) {
     tags: m.tags,
     confidence: m.confidence === null ? null : Number(m.confidence),
     sourceQuote: m.source_quote,
+    // Which project owns this memory. NULL means client-wide: it belongs to the
+    // relationship and applies to every project, so the UI must not attribute it
+    // to whichever project happens to be in context.
+    project: m.project_id
+      ? { id: m.project_id, slug: m.project_slug, name: m.project_name }
+      : null,
     occurredAt: m.interaction_occurred_at ?? m.created_at,
     interaction: m.interaction_label
       ? {

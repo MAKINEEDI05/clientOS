@@ -70,8 +70,8 @@ export function MemoryToggle({
         {!unavailable && (
           <span className="mt-1 block text-xs tabular-nums text-ink-muted">
             {on
-              ? `${memoryCount} memor${memoryCount === 1 ? 'y' : 'ies'} available`
-              : `${memoryCount} memor${memoryCount === 1 ? 'y' : 'ies'} will be ignored`}
+              ? `${memoryCount} relevant memor${memoryCount === 1 ? 'y' : 'ies'}`
+              : `${memoryCount} relevant memor${memoryCount === 1 ? 'y' : 'ies'} will be ignored`}
           </span>
         )}
       </span>

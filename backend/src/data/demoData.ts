@@ -22,6 +22,19 @@ export const DEMO_CLIENT = {
 export const DEMO_PROJECT = {
   slug: 'premium-website-redesign',
   name: 'Premium Website Redesign',
+  description: 'Full redesign of the marketing site, from positioning through to build.',
+} as const;
+
+/**
+ * A second project for the SAME client, sharing the same Hindsight bank.
+ *
+ * Its memories must not reach the website project, and vice versa — that
+ * separation is what proves project scoping works inside one client's memory.
+ */
+export const DEMO_PROJECT_TWO = {
+  slug: 'mobile-app',
+  name: 'Mobile App',
+  description: 'Companion mobile app for existing customers.',
 } as const;
 
 export interface DemoInteraction {
@@ -126,6 +139,65 @@ export const DEMO_INTERACTIONS: DemoInteraction[] = [
         type: 'approval',
         statement: 'The client approved placing customer proof above the fold.',
         scope: 'project',
+      },
+    ],
+  },
+];
+
+/**
+ * Interactions for the client's SECOND project.
+ *
+ * Deliberately about different concerns — navigation and accessibility rather
+ * than palette and typography — so a leak across projects would be obvious.
+ */
+export const DEMO_PROJECT_TWO_INTERACTIONS: DemoInteraction[] = [
+  {
+    label: 'UX Review #1',
+    source: 'design-review',
+    content: 'Navigation has to stay simple — people should reach any screen in two taps.',
+    daysAgo: 34,
+    expectedMemories: [
+      {
+        type: 'preference',
+        statement: 'The client wants simple navigation in the mobile app.',
+        scope: 'project',
+      },
+    ],
+  },
+  {
+    label: 'UX Review #2',
+    source: 'design-review',
+    content: 'Accessibility is a priority for us. Text must scale and contrast has to pass WCAG.',
+    daysAgo: 19,
+    expectedMemories: [
+      {
+        type: 'constraint',
+        statement: 'The client requires the mobile app to meet accessibility standards, including scalable text and sufficient contrast.',
+        scope: 'project',
+      },
+    ],
+  },
+];
+
+/**
+ * Client-wide memory: true of the relationship, not of one project.
+ *
+ * Carries no project tag, so it is recalled whichever project is active. This is
+ * the counterpart to project-scoped memory — the thing that SHOULD cross
+ * project boundaries.
+ */
+export const DEMO_CLIENT_WIDE_INTERACTIONS: DemoInteraction[] = [
+  {
+    label: 'Relationship Review #1',
+    source: 'meeting',
+    content:
+      'Across everything we do together, premium positioning and clear communication matter most.',
+    daysAgo: 130,
+    expectedMemories: [
+      {
+        type: 'preference',
+        statement: 'The client values premium positioning and clear communication across all of their work.',
+        scope: 'client',
       },
     ],
   },

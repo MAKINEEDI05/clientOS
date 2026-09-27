@@ -12,6 +12,7 @@ import { FeedbackResult } from '../components/FeedbackResult';
 import { ClientContextBar } from '../components/ClientContextBar';
 import { EmptyState, ErrorState, LoadingState } from '../components/States';
 import { formatDate, formatSource } from '../lib/format';
+import { flattenProjectMemory, splitRelevant } from '../lib/memoryCounts';
 import type { Interaction, InteractionSource, SubmitInteractionResult } from '../types/api';
 
 export function ClientWorkspace() {
@@ -63,6 +64,7 @@ export function ClientWorkspace() {
 
   const { client, projects: projectList } = clientState.data;
   const memory = projectState.data?.memory;
+  const relevant = splitRelevant(flattenProjectMemory(memory));
   const memoryHref = `/clients/${clientId}/memory${activeProject ? `?project=${activeProject.slug}` : ''}`;
 
   return (
@@ -109,6 +111,7 @@ export function ClientWorkspace() {
               clientName={client.name}
               projectName={activeProject.name}
               memoryCount={projectState.data?.memoryCount ?? activeProject.memoryCount}
+              relevant={projectState.data ? relevant : undefined}
               interactionCount={activeProject.interactionCount}
               memoryConnected={health?.connected ?? false}
             />
@@ -147,6 +150,7 @@ export function ClientWorkspace() {
                 onSubmit={(input) => void submit.run(input)}
                 pending={submit.pending}
                 error={submit.errorMessage}
+                projectName={activeProject?.name ?? null}
               />
 
               {lastResult && (
@@ -171,6 +175,11 @@ export function ClientWorkspace() {
               )}
               {memory && (
                 <>
+                  <p className="text-xs leading-relaxed text-ink-muted">
+                    What ClientOS currently holds for{' '}
+                    <span className="font-medium text-ink-soft">{activeProject?.name}</span> — its
+                    own decisions plus {client.name}'s client-wide preferences.
+                  </p>
                   <MemoryPanel
                     title="Current preferences"
                     memories={memory.preferences}

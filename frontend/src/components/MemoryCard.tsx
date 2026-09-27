@@ -10,10 +10,16 @@ import type { MemoryItem } from '../types/api';
  * history is a product promise, so the UI has to show it.
  */
 export function MemoryCard({
-  memory, compact = false, onRetire, onRestore, busy,
+  memory, compact = false, onRetire, onRestore, busy, activeProjectId,
 }: {
   memory: MemoryItem;
   compact?: boolean;
+  /**
+   * The project currently in context, so a memory owned by a DIFFERENT project
+   * can be told apart from one belonging to this one. Only matters in views that
+   * span projects; ownership itself always comes from the memory.
+   */
+  activeProjectId?: string | null;
   onRetire?: (memory: MemoryItem) => void;
   onRestore?: (memory: MemoryItem) => void;
   busy?: boolean;
@@ -22,6 +28,22 @@ export function MemoryCard({
   const canRetire = Boolean(onRetire) && memory.state === 'valid';
   const canRestore = Boolean(onRestore) && memory.state === 'invalidated';
 
+  // A client-wide memory belongs to the relationship, not to one project: it is
+  // one stored memory shown under every project, never a copy per project.
+  const isClientWide = memory.project === null;
+  // Only worth saying in a view that spans projects — and deliberately NOT worded
+  // "this project", which is what the scope badge means. Ownership and reach are
+  // different things and must not read as the same thing.
+  const isOtherProject =
+    !isClientWide && Boolean(activeProjectId) && memory.project?.id !== activeProjectId;
+  // In a compact panel the surrounding context is already one project, so only
+  // the memory that reaches beyond it needs naming.
+  const ownerLabel = isClientWide
+    ? 'All projects'
+    : compact
+      ? null
+      : memory.project?.name ?? null;
+
   return (
     <article className={`card p-3.5 ${isRetired ? 'opacity-75' : ''}`}>
       <div className="flex flex-wrap items-center gap-1.5">
@@ -29,6 +51,21 @@ export function MemoryCard({
         <ScopeBadge scope={memory.scope} />
         <StateBadge state={memory.state} />
       </div>
+
+      {ownerLabel && (
+        <p
+          className={`mt-1.5 text-[0.6875rem] font-medium uppercase tracking-wide ${
+            isClientWide ? 'text-accent' : 'text-ink-muted'
+          }`}
+        >
+          {ownerLabel}
+          {isOtherProject && (
+            <span className="font-normal normal-case tracking-normal text-ink-muted/70">
+              {' '}· another project
+            </span>
+          )}
+        </p>
+      )}
 
       <p className={`mt-2 text-sm leading-relaxed text-ink ${isRetired ? 'line-through decoration-ink-muted/50' : ''}`}>
         {memory.statement}

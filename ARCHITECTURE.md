@@ -103,6 +103,54 @@ Two columns carry design weight:
 
 Migrations are forward-only and tracked in `schema_migrations`.
 
+### 3.2 Multi-project memory
+
+One client, one bank, many projects:
+
+```
+ONE CLIENT
+   ↓
+ONE HINDSIGHT BANK
+   ↓
+MULTIPLE PROJECTS          (tags, not separate banks)
+   ↓
+PROJECT-SCOPED MEMORY  +  CLIENT-WIDE MEMORY
+   ↓
+ACTIVE-PROJECT RECALL      (project ∪ client ∪ future, strict)
+   ↓
+GROQ RECOMMENDATION
+```
+
+A client-wide memory has `memory_refs.project_id = NULL` and no `project:` tag,
+so it is stored once and surfaces under every project. A project-scoped memory
+carries both, so it stays where it belongs.
+
+The project memory counts shown in the UI count **what recall will actually draw
+on** — the project's own memories plus the client-wide ones — so the number in
+the header matches the number of memories the agent can cite.
+
+#### Active project vs memory scope
+
+Two ideas that sound similar and are not:
+
+| | **Active project** | **Memory scope** |
+|---|---|---|
+| Answers | Which project am I working on? | How widely does this decision apply? |
+| Values | one of the client's projects | `interaction` · `revision` · `project` · `client` · `future` |
+| Lives in | the URL (`?project=<slug>`) | tags on the memory |
+| Chosen | by switching project | when a preference change is confirmed |
+| Changes | what is recalled for the next request | what is recalled for every future request |
+
+Worked example: with **Premium Website Redesign** as the active project, confirming
+a change at scope **This project** leaves the Mobile App untouched; confirming the
+same change at **All future projects** makes it apply there too. The active project
+is the context of the work; the scope is the reach of the decision.
+
+The UI keeps them apart deliberately. There is exactly **one** active-project
+control per screen (`useActiveProject`, rendered by `ProjectSwitcher` in the client
+workspace and `ProjectContextSelector` elsewhere), and the conflict card *shows*
+its project without offering to change it — a conflict already belongs to one.
+
 ## 4. Agent flow
 
 ```

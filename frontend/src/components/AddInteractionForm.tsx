@@ -20,11 +20,17 @@ const MAX_CONTENT = 5000;
  * double-click creating duplicate memory.
  */
 export function AddInteractionForm({
-  onSubmit, pending, error,
+  onSubmit, pending, error, projectName,
 }: {
   onSubmit: (input: { label: string; source: InteractionSource; content: string }) => void;
   pending: boolean;
   error: string | null;
+  /**
+   * The project this feedback will be recorded against — the shared active
+   * project, shown rather than chosen. Feedback becomes memory, so the
+   * destination must never be a guess on the user's part.
+   */
+  projectName?: string | null;
 }) {
   const [label, setLabel] = useState('');
   const [source, setSource] = useState<InteractionSource>('revision');
@@ -43,6 +49,12 @@ export function AddInteractionForm({
   return (
     <form onSubmit={handleSubmit} className="card p-4">
       <h3 className="eyebrow mb-1">Add client feedback</h3>
+      {projectName && (
+        <p className="mb-2 text-sm text-ink-muted">
+          Adding feedback to{' '}
+          <span className="font-medium text-ink">{projectName}</span>
+        </p>
+      )}
       <p className="mb-3 text-xs leading-relaxed text-ink-muted">
         Write what the client actually said. ClientOS works out what is worth remembering —
         you do not categorise it.

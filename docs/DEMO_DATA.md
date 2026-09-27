@@ -39,6 +39,35 @@ Total seeded: 7 interactions, 9 memories for Vive Studio.
 Hindsight additionally consolidates these raw facts into **observations** of its own, so the
 bank typically holds more units than we retained. Those are derived memory, not duplicates.
 
+## Second project — multi-project proof
+
+Vive Studio has a **second project in the same memory bank**, so project scoping
+is demonstrable rather than described.
+
+**Mobile App** (`mobile-app`) — companion app for existing customers.
+
+| # | Label | Source | What the client said | Memory produced |
+|---|---|---|---|---|
+| 1 | UX Review #1 | design-review | "Navigation has to stay simple — people should reach any screen in two taps." | preference — simple navigation |
+| 2 | UX Review #2 | design-review | "Accessibility is a priority for us. Text must scale and contrast has to pass WCAG." | constraint — accessibility standards |
+
+And one **client-wide** memory, which belongs to the relationship rather than a
+project:
+
+| # | Label | Source | What the client said | Memory produced |
+|---|---|---|---|---|
+| — | Relationship Review #1 | meeting | "Across everything we do together, premium positioning and clear communication matter most." | preference (**scope: client**) — premium positioning and clear communication |
+
+Total for Vive Studio: 9 website memories + 2 mobile memories + 1 client-wide = 12.
+
+### What this demonstrates
+
+Ask the **website** project for a homepage direction → 10 memories (its 9 plus the
+client-wide one). Ask the **Mobile App** "How should we approach the next product
+screen?" → 3 memories (its 2 plus the same client-wide one). Neither sees the
+other's work, and the client-wide memory is **one stored memory**, not a copy per
+project.
+
 ## Second client — isolation proof
 
 **Northwind Labs** (`northwind-labs`), project **Marketing Site**, bank `client-northwind-labs`.

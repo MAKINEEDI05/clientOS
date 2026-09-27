@@ -9,7 +9,10 @@ import { bankIdForClient, slugify } from '../utils/slug.js';
 import {
   DEMO_CLIENT,
   DEMO_PROJECT,
+  DEMO_PROJECT_TWO,
   DEMO_INTERACTIONS,
+  DEMO_PROJECT_TWO_INTERACTIONS,
+  DEMO_CLIENT_WIDE_INTERACTIONS,
   DEMO_CONFLICT_INTERACTION,
   ISOLATION_CLIENT,
   ISOLATION_PROJECT,
@@ -118,6 +121,15 @@ export async function resetDemo(stage: DemoStage): Promise<ResetResult> {
     clientId: client.id,
     slug: DEMO_PROJECT.slug,
     name: DEMO_PROJECT.name,
+    description: DEMO_PROJECT.description,
+  });
+
+  // A second project for the same client, sharing the same memory bank.
+  const projectTwo = await projectsRepo.createProject({
+    clientId: client.id,
+    slug: DEMO_PROJECT_TWO.slug,
+    name: DEMO_PROJECT_TWO.name,
+    description: DEMO_PROJECT_TWO.description,
   });
 
   // Second client, so cross-client isolation can be demonstrated rather than asserted.
@@ -150,6 +162,35 @@ export async function resetDemo(stage: DemoStage): Promise<ResetResult> {
     interactionsSeeded += seeded.interactions;
     memoriesRetained += seeded.memories;
     warnings.push(...seeded.warnings);
+
+    // Second project: its own memories, same bank.
+    const secondSeeded = await seedInteractions({
+      clientId: client.id,
+      clientSlug: client.slug,
+      projectId: projectTwo.id,
+      projectSlug: projectTwo.slug,
+      bankId,
+      userId: user.id,
+      interactions: DEMO_PROJECT_TWO_INTERACTIONS,
+    });
+    interactionsSeeded += secondSeeded.interactions;
+    memoriesRetained += secondSeeded.memories;
+    warnings.push(...secondSeeded.warnings);
+
+    // Client-wide memory. Recorded against the first project for provenance, but
+    // retained at client scope so it carries no project tag and reaches both.
+    const clientWideSeeded = await seedInteractions({
+      clientId: client.id,
+      clientSlug: client.slug,
+      projectId: project.id,
+      projectSlug: project.slug,
+      bankId,
+      userId: user.id,
+      interactions: DEMO_CLIENT_WIDE_INTERACTIONS,
+    });
+    interactionsSeeded += clientWideSeeded.interactions;
+    memoriesRetained += clientWideSeeded.memories;
+    warnings.push(...clientWideSeeded.warnings);
 
     const isoSeeded = await seedInteractions({
       clientId: isolationClient.id,
@@ -242,12 +283,17 @@ async function seedInteractions(
     const documentId = `interaction:${interaction.id}`;
 
     for (const mem of spec.expectedMemories) {
+      // A client-wide memory is not owned by a project: it carries no project
+      // tag in Hindsight and no project_id locally, so it surfaces under every
+      // project for this client rather than just the one it was recorded in.
+      const isClientWide = mem.scope === 'client' || mem.scope === 'future';
+
       const res = await retainAndRecord({
         bankId: input.bankId,
         clientId: input.clientId,
         clientSlug: input.clientSlug,
-        projectId: input.projectId,
-        projectSlug: input.projectSlug,
+        projectId: isClientWide ? null : input.projectId,
+        projectSlug: isClientWide ? null : input.projectSlug,
         interactionId: interaction.id,
         memoryType: mem.type,
         statement: mem.statement,

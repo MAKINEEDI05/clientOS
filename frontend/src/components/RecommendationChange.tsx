@@ -7,15 +7,22 @@
  * regeneration happens until the user asks for it.
  */
 export function RecommendationChange({
-  before, after, onRegenerate, regenerating,
+  before, after, onRegenerate, regenerating, projectName,
 }: {
   before: string;
   after: string | null;
   onRegenerate: () => void;
   regenerating: boolean;
+  /** Which project's direction changed — one client can have several. */
+  projectName?: string | null;
 }) {
   return (
     <section aria-live="polite" className="rounded-2xl border border-black/[0.08] bg-paper px-5 py-4 shadow-card sm:px-6">
+      {projectName && (
+        <p className="mb-1.5 text-[0.6875rem] font-semibold uppercase tracking-wide text-ink-muted">
+          {projectName}
+        </p>
+      )}
       <p className="eyebrow">Recommendation updated</p>
       <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
         {after

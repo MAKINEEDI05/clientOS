@@ -148,6 +148,9 @@ export interface TimelineMemory extends MemoryRefRow {
   interaction_label: string | null;
   interaction_source: string | null;
   interaction_occurred_at: Date | null;
+  /** Owning project, or NULL for a client-wide memory. */
+  project_slug: string | null;
+  project_name: string | null;
 }
 
 /**
@@ -192,9 +195,12 @@ export async function listProjectMemories(
     `SELECT m.*,
             i.label       AS interaction_label,
             i.source      AS interaction_source,
-            i.occurred_at AS interaction_occurred_at
+            i.occurred_at AS interaction_occurred_at,
+            p.slug        AS project_slug,
+            p.name        AS project_name
      FROM memory_refs m
      LEFT JOIN interactions i ON i.id = m.interaction_id
+     LEFT JOIN projects p     ON p.id = m.project_id
      WHERE ${conditions.join(' AND ')}
      ORDER BY COALESCE(i.occurred_at, m.created_at) ASC, m.created_at ASC
      LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
@@ -225,9 +231,11 @@ export async function listClientMemories(
 
   return query<TimelineMemory>(
     `SELECT m.*, i.label AS interaction_label, i.source AS interaction_source,
-            i.occurred_at AS interaction_occurred_at
+            i.occurred_at AS interaction_occurred_at,
+            p.slug AS project_slug, p.name AS project_name
      FROM memory_refs m
      LEFT JOIN interactions i ON i.id = m.interaction_id
+     LEFT JOIN projects p     ON p.id = m.project_id
      WHERE ${conditions.join(' AND ')}
      ORDER BY COALESCE(i.occurred_at, m.created_at) ASC, m.created_at ASC
      LIMIT $${limitIdx} OFFSET $${offsetIdx}`,

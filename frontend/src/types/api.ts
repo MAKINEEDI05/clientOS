@@ -75,6 +75,8 @@ export interface MemoryItem {
   confidence: number | null;
   sourceQuote: string | null;
   occurredAt: string;
+  /** Owning project, or null when the memory is client-wide. */
+  project: { id: string; slug: string | null; name: string | null } | null;
   interaction: { id: string | null; label: string; labelDisplay: string; source: string | null } | null;
   sourceLabelDisplay: string | null;
   supersedes: Array<{ memoryRefId: string; statement: string; scope: MemoryScope }>;

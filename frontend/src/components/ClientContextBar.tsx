@@ -1,16 +1,25 @@
+import type { RelevantMemory } from '../lib/memoryCounts';
+
 /**
  * Compact client/project identity with live memory status.
  *
  * Sits at the top of the AI workspace so it is always clear whose memory is in
- * play — which is also what makes client isolation demonstrable. Nothing about
- * the memory layer's internals is exposed.
+ * play, and — since one client can have several projects — WHICH project's. The
+ * project control is passed in rather than built here, so every screen drives the
+ * same active-project state. Nothing about the memory layer's internals is
+ * exposed.
  */
 export function ClientContextBar({
-  clientName, projectName, memoryCount, interactionCount, memoryConnected, memoryEnabled = true,
+  clientName, projectName, projectControl, memoryCount, relevant,
+  interactionCount, memoryConnected, memoryEnabled = true,
 }: {
   clientName: string;
   projectName?: string | null;
+  /** The shared active-project control, when this screen should offer one. */
+  projectControl?: React.ReactNode;
   memoryCount: number;
+  /** Breakdown of the count into project and client-wide memory, when known. */
+  relevant?: RelevantMemory;
   interactionCount?: number;
   /** Whether this client's memory can be reached at all. */
   memoryConnected: boolean;
@@ -21,13 +30,15 @@ export function ClientContextBar({
   // contradict the toggle and imply history is in play when it is not.
   const state = !memoryConnected ? 'unavailable' : memoryEnabled ? 'active' : 'off';
   return (
-    <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3 border-b border-black/[0.08] pb-4">
+    <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 border-b border-black/[0.08] pb-4">
       <div className="min-w-0">
         <h1 className="font-display text-[1.75rem] leading-tight tracking-tight text-ink">
           {clientName}
         </h1>
-        {projectName && (
-          <p className="mt-0.5 text-sm text-ink-muted">{projectName}</p>
+        {projectControl ? (
+          <div className="mt-2">{projectControl}</div>
+        ) : (
+          projectName && <p className="mt-0.5 text-sm text-ink-muted">{projectName}</p>
         )}
       </div>
 
@@ -50,11 +61,20 @@ export function ClientContextBar({
               : 'Client memory unavailable'}
         </span>
         <span className="text-xs tabular-nums text-ink-muted">
-          {memoryCount} memor{memoryCount === 1 ? 'y' : 'ies'}
+          {memoryCount} relevant memor{memoryCount === 1 ? 'y' : 'ies'}
           {interactionCount !== undefined && (
             <> · {interactionCount} interaction{interactionCount === 1 ? '' : 's'}</>
           )}
         </span>
+        {/* Why the number is what it is: this project's decisions plus the
+            client-wide ones. Both figures come from the memories themselves. */}
+        {relevant && relevant.total > 0 && (
+          <span className="max-w-xs text-xs leading-relaxed text-ink-muted sm:text-right">
+            {relevant.project} project decision{relevant.project === 1 ? '' : 's'}
+            {' + '}
+            {relevant.clientWide} client-wide
+          </span>
+        )}
       </div>
     </div>
   );

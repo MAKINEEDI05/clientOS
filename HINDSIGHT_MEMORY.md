@@ -42,6 +42,44 @@ createBank(bankId, {
 Deprecated SDK options (`name`, `mission`, `background`, `disposition`, `getBankProfile` —
 which answers HTTP 410) are deliberately avoided.
 
+### 2.1 One client, many projects
+
+A client's bank holds every project they have with you:
+
+```
+CLIENT  Vive Studio
+  └── bank: client-vive-studio
+        ├── project:premium-website-redesign   9 memories
+        ├── project:mobile-app                 2 memories
+        └── scope:client   (no project tag)    1 memory   ← applies to both
+```
+
+**Projects never get their own bank.** They are a tag filter inside the client's
+bank, which is what lets a client-wide memory be stored **once** and still reach
+every project, instead of being copied per project and drifting.
+
+Two kinds of memory live side by side:
+
+| | Tagged | Reaches |
+|---|---|---|
+| **Project-scoped** | `project:<slug>` + `scope:project` | only that project |
+| **Client-wide** | `scope:client` (or `scope:future`), **no project tag** | every project for that client |
+
+Recall for an active project admits its own memories, plus client-wide and
+future-scoped ones, and nothing else. A sibling project's memories are excluded
+because they carry a different `project:` tag and neither `scope:client` nor
+`scope:future` — so no arm of the filter matches them.
+
+**Why exclude sibling projects at all?** A decision made about a marketing site
+is not evidence about a mobile app. Letting it through would produce
+recommendations that cite real memories for the wrong work — which is worse than
+having no memory, because the citation makes it look justified.
+
+This is verified against live Hindsight, not assumed: see the "one bank, two
+projects — real recall" tests in `backend/src/__tests__/multiProject.test.ts`,
+which retain into one bank under two project tags and assert that each project
+recalls its own plus the client-wide memory and never the sibling's.
+
 ## 3. Tags are how scope is represented
 
 Per the Hindsight docs, memories only return if their tags intersect the recall filter. That

@@ -79,8 +79,13 @@ export async function listProjectsForClient(clientId: string): Promise<
        (SELECT count(*) FROM interactions i WHERE i.project_id = p.id)                        AS interaction_count,
        (SELECT count(*) FROM preference_conflicts k
           WHERE k.project_id = p.id AND k.status = 'pending')                                 AS open_conflicts,
+       -- Memories available to this project: its own, plus the client-wide ones
+       -- (project_id IS NULL) that apply whichever project is active. This must
+       -- match what recall actually draws on, or the count misleads.
        (SELECT count(*) FROM memory_refs m
-          WHERE m.project_id = p.id AND m.state <> 'invalidated')                             AS memory_count
+          WHERE m.client_id = p.client_id
+            AND (m.project_id = p.id OR m.project_id IS NULL)
+            AND m.state <> 'invalidated')                                                     AS memory_count
      FROM projects p
      WHERE p.client_id = $1
      ORDER BY p.created_at ASC`,
