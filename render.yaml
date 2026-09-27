@@ -1,0 +1,41 @@
+# Render blueprint for the ClientOS backend + PostgreSQL.
+# Secrets are NOT stored here — set them in the Render dashboard.
+services:
+  - type: web
+    name: clientos-backend
+    runtime: node
+    plan: free
+    rootDir: .
+    buildCommand: npm install && npm run build --workspace backend
+    startCommand: npm run db:migrate --workspace backend && npm run start --workspace backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: clientos-db
+          property: connectionString
+      - key: HINDSIGHT_BASE_URL
+        value: https://api.hindsight.vectorize.io
+      - key: HINDSIGHT_TENANT_ID
+        value: default
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
+      # Set these in the Render dashboard — never commit them.
+      - key: HINDSIGHT_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: DEMO_RESET_TOKEN
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+
+databases:
+  - name: clientos-db
+    plan: free
+    databaseName: clientos
+    user: clientos
