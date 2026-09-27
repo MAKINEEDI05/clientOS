@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: clientos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: clientos
+      POSTGRES_PASSWORD: clientos
+      POSTGRES_DB: clientos
+    ports:
+      - "5432:5432"
+    volumes:
+      - clientos_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clientos -d clientos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  clientos_pgdata:
