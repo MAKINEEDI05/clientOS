@@ -177,5 +177,5 @@ information is used.
 
 - [Setup](SETUP.md) · [Architecture](ARCHITECTURE.md) · [Hindsight memory design](HINDSIGHT_MEMORY.md)
 - [API reference](docs/API.md) · [Demo data](docs/DEMO_DATA.md) · [Demo script](DEMO_SCRIPT.md)
-- [Edge case results](Edge_Case_Checklist.md) · [Product decisions](docs/PRODUCT_DECISIONS.md)
+- [Edge case results](EDGE_CASE_TEST_CHECKLIST.md) · [Product decisions](docs/PRODUCT_DECISIONS.md)
 - [Hackathon spec](HACKATHON_MASTER_SPEC.md)

@@ -74,6 +74,35 @@ supersession relation and no server-side metadata filtering, and because the tim
 render instantly without a network round trip. Every row carries `hindsight_memory_id`;
 Hindsight is authoritative on any disagreement.
 
+### 3.1 PostgreSQL tables
+
+Eleven tables plus `schema_migrations`. Defined in `backend/src/db/migrations/` — those files
+are the source of truth; this is a map, not a duplicate of the DDL.
+
+| Table | Holds | Notable constraints |
+|---|---|---|
+| `users` | the seeded demo user | unique email |
+| `clients` | client identity and its `hindsight_bank_id` | unique slug, unique bank id — the cross-system join |
+| `projects` | projects per client | unique `(client_id, slug)` |
+| `interactions` | raw client feedback, `occurred_at`, `retain_status` | unique `(project_id, label)` — blocks duplicate submission |
+| `memory_refs` | pointer + display cache for one memory | unique `hindsight_memory_id` where present; nullable until reconciled |
+| `memory_links` | supersession graph (`supersedes` / `refines` / `contradicts`) | no self-links; unique per (from, to, relation) |
+| `preference_conflicts` | a detected change awaiting scope confirmation | resolution claimed atomically |
+| `recommendations` | agent output + point-in-time evidence snapshot | `memory_used`, `hindsight_ok` honesty flags |
+| `recommendation_feedback` | accepted / rejected / corrected outcomes | cascades with its recommendation |
+| `hindsight_directives` | local record of tag-scoped directives | scope is `project` or `client` |
+| `demo_state` | which demo stage is loaded | single-row guard (`id = true`) |
+
+Two columns carry design weight:
+
+- **`memory_refs.hindsight_memory_id` is nullable.** `retain` returns no memory ids — Hindsight
+  extracts facts rather than storing text verbatim, so one submission may yield several facts
+  or none. Ids are reconciled afterwards via `listMemories({ documentId })`.
+- **`recommendations.evidence` is a jsonb snapshot, not a join.** It records what was recalled
+  at that moment and must not change when memory later changes, or the audit is worthless.
+
+Migrations are forward-only and tracked in `schema_migrations`.
+
 ## 4. Agent flow
 
 ```

@@ -1,3 +1,24 @@
+> **Status of this document.** This is the original hackathon brief for ClientOS, kept as the
+> statement of project intent. Two things to know when reading it:
+>
+> 1. **It is written as a set of instructions, not as a finished specification.** It describes
+>    what ClientOS should be and what it must not become; it was never rewritten into a spec.
+>    Its product direction, MVP scope, demo dataset and Definition of Done are authoritative
+>    and were followed.
+> 2. **Its claims about hackathon rules are unverified.** The judging weights and submission
+>    requirements stated below were not confirmed against official Hack With Hyderabad 3.0
+>    material. Treat them as this project's working assumptions, not as official rules.
+>
+> Two details did change during implementation, and the as-built documentation is correct where
+> the two disagree: the LLM is `openai/gpt-oss-120b` rather than a Llama model (the specified
+> model is not available on the Groq account — see `docs/PRODUCT_DECISIONS.md` Decision 17), and
+> Design Review #1 in the demo dataset carries the colour restriction that Revision #6 later
+> contradicts, without which the conflict scenario has nothing to detect.
+>
+> For what was actually built, see `README.md`, `ARCHITECTURE.md` and `HINDSIGHT_MEMORY.md`.
+
+---
+
 You are the lead technical architect and documentation engineer for our Hack With Hyderabad 3.0 hackathon project.
 
 PROJECT:

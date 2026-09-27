@@ -87,6 +87,39 @@ would let unrelated memory cross a project boundary.
 `sdk.updateMemory` and `sdk.listBanks` are generated functions reached through our own
 `createClient`, because `HindsightClient` does not expose them and keeps its transport private.
 
+### 4.1 Verified HTTP reference
+
+The SDK is what ClientOS calls; these are the endpoints behind it. Base
+`https://api.hindsight.vectorize.io`, header `Authorization: Bearer hsk_…`.
+
+| Method | Path | Operation |
+|---|---|---|
+| GET | `/v1/default/banks` | list banks (used as the authenticated health probe) |
+| GET | `/v1/default/banks/{bank}` | bank config |
+| POST | `/v1/default/banks/{bank}/memories` | **retain** |
+| POST | `/v1/default/banks/{bank}/memories/recall` | **recall** |
+| POST | `/v1/default/banks/{bank}/reflect` | **reflect** |
+| GET | `/v1/default/banks/{bank}/memories/list` | list memories |
+| GET | `/v1/default/banks/{bank}/memories/{id}` | get one memory |
+| PATCH | `/v1/default/banks/{bank}/memories/{id}` | **curate / invalidate** |
+
+### 4.2 Why recall + Groq, and not reflect, for recommendations
+
+`reflect` could produce recommendations directly, with `responseSchema` for structure and
+`includeFacts` for sources, in a single call. ClientOS deliberately does not use it that way:
+
+- The stack commits to **Groq** for reasoning; `reflect` runs Hindsight's own model.
+- **Citations have to be exact.** With `recall` the backend holds every result — id, text,
+  tags, source label — and can bind each recommendation line to specific memories.
+  `reflect`'s `based_on` is a flat list covering the whole answer, so per-line "Why?" would be
+  approximate.
+- **Prompt control** matters most for the hardest constraint in the system: never asserting
+  client history that was not supplied.
+- Recall is cheaper and faster than an agentic reflect loop.
+
+`reflect` is still used for the standing-brief module, so Retain, Recall and Reflect are all
+genuinely exercised rather than name-dropped.
+
 ## 5. Retain
 
 ```ts

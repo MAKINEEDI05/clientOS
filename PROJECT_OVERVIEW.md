@@ -1,140 +1,98 @@
 # ClientOS — Project Overview
 
-## 1. Product Definition
+## 1. Product definition
 
 **ClientOS** is a Client Decision Memory Agent.
 
-It maintains persistent memory of client decisions and uses that history to improve future recommendations.
+It keeps persistent memory of client decisions in Hindsight and uses that history to make the
+next recommendation more accurate.
 
-### One-line description
+> ClientOS remembers client preferences, decisions, rejections and revisions, so every new
+> client task starts with what the team already learned.
 
-> ClientOS remembers client preferences, decisions, rejections, and revisions so every new client task starts with what the team already learned.
+## 2. The problem
 
-## 2. Problem
+Client work is iterative. A decision made in one meeting shapes work weeks later, but the
+reasoning behind it is usually lost. The result:
 
-Client work is iterative. A decision made during one meeting may affect work weeks later, but the reasoning behind that decision is often lost.
+- Rejected ideas get proposed again.
+- Nobody remembers *why* something was rejected.
+- Context evaporates between meetings.
+- New team members start with no history.
+- Old preferences are treated as current forever.
+- Questions already answered get asked again.
 
-Common failures:
+The deeper problem is **loss of decision context**, not a shortage of documents.
 
-- Repeating rejected ideas.
-- Forgetting why an idea was rejected.
-- Losing context between meetings.
-- New team members lacking client history.
-- Treating old preferences as current forever.
-- Repeatedly asking questions already answered.
+## 3. Target persona
 
-The deeper problem is **loss of decision context**, not simply lack of documents.
+A creative or digital agency team working with clients on website and design revisions. The
+product is deliberately narrow: one persona, one workflow.
 
-## 3. Target Persona
+## 4. Value proposition
 
-Primary persona:
+Instead of answering *"what did the client say?"*, ClientOS answers
+*"what does this client's history tell us to do now, and why?"* — with the evidence attached.
 
-**Creative/digital agency team working with clients on website or design revisions.**
-
-The MVP should remain focused on this persona.
-
-## 4. Value Proposition
-
-ClientOS turns historical client feedback into reusable decision intelligence.
-
-Instead of:
-
-> "What did the client say?"
-
-it answers:
-
-> "What does the client's history tell us to do now, and why?"
-
-## 5. Core Workflow
+## 5. Core loop
 
 ```text
-Receive feedback
+Client feedback
+      ↓  extract only durable decisions
+Hindsight Retain
       ↓
-Identify decision/preference/rejection
-      ↓
-Persist memory
-      ↓
-Recall relevant memories later
-      ↓
-Generate recommendation
-      ↓
-Explain recommendation
-      ↓
-Capture outcome
-      ↓
-Improve future recommendation
+Hindsight Recall  ──►  Groq reasoning  ──►  Recommendation + Why/evidence
+      ↓                                            ↓
+      └──────────── outcome / new feedback ────────┘
 ```
 
-## 6. MVP Features
+## 6. What is built
 
-### Client Dashboard
+| Capability | How it works |
+|---|---|
+| **Selective memory** | Feedback is filtered to durable decisions only. Every retained memory must quote the source text verbatim, so vague input cannot become an invented preference. Discards are shown with reasons. |
+| **Scoped recall** | One Hindsight bank per client; project, scope, type and source carried as tags. Compound tag filters with `any_strict` matching keep projects and clients isolated. |
+| **Grounded recommendations** | Each line is bound to the memory ids it came from. Citations that were not recalled are dropped; lines claiming client history with no citation are removed. |
+| **Why / evidence** | Assembled from the memory's own words and its source interaction — never generated, so it cannot drift from what memory says. |
+| **Preference conflicts** | A contradiction halts the write, shows both statements, and asks how widely the change applies. Nothing reaches memory until a human confirms. |
+| **Preserved history** | No memory is ever deleted. Project-scoped changes mark the old preference superseded; client-wide changes invalidate it, which keeps it auditable and restorable. |
+| **Honest failure** | If Hindsight is unreachable the request fails rather than answering without history. The header badge reflects live, authenticated memory status. |
 
-Displays:
+### Screens
 
-- Client
-- Project
-- Decision count
-- Preference count
-- Rejection count
-- Recent interactions
+| Screen | Route | Shows |
+|---|---|---|
+| Dashboard | `/` | Clients, decision counts, open confirmations |
+| Client Workspace | `/clients/:id` | Record feedback; current preferences, approvals, rejections |
+| AI Workspace | `/clients/:id/ai` | Ask ClientOS; recommendation → Why → evidence; resolve conflicts |
+| Memory Timeline | `/clients/:id/memory` | How decisions evolved, superseded entries included |
 
-### Client Workspace
+## 7. Non-goals
 
-Displays:
+ClientOS is not a CRM, a project-management suite, an email or billing platform, a document
+manager, a general chatbot, or an autonomous client-communication tool. Each was excluded
+because it would dilute the memory-learning demonstration rather than strengthen it.
 
-- Current project
-- Ask ClientOS
-- Recent decisions
-- Preferences
-- Rejected ideas
-- Open conflicts
+## 8. Success criteria
 
-### AI Workspace
+Observable in three steps:
 
-Allows users to ask questions and receive memory-aware recommendations.
+1. **Before memory** — a generic answer, with no citations and an explicit note that no history
+   was found.
+2. **After memory** — the same question, a personalised answer, every claim citing a real
+   recalled memory.
+3. **After a confirmed change** — the same question again, and the answer changes to match.
 
-### Memory Timeline
+All three are reproducible from a clean state via `npm run db:seed`.
 
-Displays the evolution of client decisions over time.
+## 9. Future scope
 
-### Why?
+Email and meeting integrations · multi-project client memory · team handoff · approval
+workflows · client communication drafting · analytics on recurring revision patterns ·
+authentication and multi-tenancy.
 
-Every important recommendation can show the historical evidence behind it.
+---
 
-### Preference Conflict
-
-When a new statement conflicts with historical memory, ClientOS asks the user to confirm the scope of the change.
-
-## 7. Non-Goals
-
-The MVP is not:
-
-- A full CRM
-- A project-management suite
-- An email client
-- A billing system
-- A generic document-management product
-- A generic ChatGPT clone
-- An autonomous client communication platform
-
-## 8. Success Criteria
-
-The product succeeds if a judge can immediately observe:
-
-**Before memory:** generic answer.
-
-**After memory:** personalized answer.
-
-**After learning:** future answer changes because of new confirmed information.
-
-## 9. Future Scope
-
-Possible future extensions:
-
-- Email and meeting integrations
-- Multi-project client memory
-- Team handoff
-- Approval workflows
-- Client communication drafting
-- Analytics on recurring revision patterns
-- Decision confidence and provenance
+See [README.md](README.md) to run it, [ARCHITECTURE.md](ARCHITECTURE.md) for how it is built,
+[HINDSIGHT_MEMORY.md](HINDSIGHT_MEMORY.md) for the memory design, and
+[docs/PRODUCT_DECISIONS.md](docs/PRODUCT_DECISIONS.md) for why.

@@ -236,6 +236,19 @@ normal retain path. This is what makes the demo repeatable without duplicate-mem
 
 ---
 
+## Which screen uses what
+
+| Screen | Endpoints |
+|---|---|
+| App shell (memory badge) | `GET /health/hindsight` |
+| Dashboard | `GET /clients` |
+| Client Workspace | `GET /clients/:id` · `GET /projects/:id` · `GET|POST /projects/:id/interactions` · `GET /projects/:id/conflicts` |
+| AI Workspace | `POST /agent/recommend` · `GET /agent/recommendations/:id` · `POST /agent/recommendations/:id/feedback` · `POST /conflicts/:id/resolve` |
+| Memory Timeline | `GET /projects/:id/memory` · `GET /clients/:id/memory` |
+
+Route handlers live in `backend/src/routes/index.ts`; the frontend calls them only through
+`frontend/src/services/clientos.ts`, so no component issues a raw `fetch`.
+
 ## Principles
 
 - Inputs validated with zod at the route boundary; all SQL uses bound parameters.
