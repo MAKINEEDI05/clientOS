@@ -48,10 +48,11 @@ describe('RecommendationCard', () => {
     // Appears twice by design: once in the Why sentence, once as the evidence item.
     expect(screen.getAllByText(/The client rejected heavy animation\./)).toHaveLength(2);
     expect(screen.getByText('Supporting memories')).toBeInTheDocument();
-    // The source citation must be rendered, since that is what makes evidence checkable.
-    expect(screen.getByText('Revision #3')).toBeInTheDocument();
-    // The Hindsight memory id is shown so the claim is traceable.
-    expect(screen.getByTitle('Hindsight memory id')).toHaveTextContent('mem_abc12345');
+    // The source interaction is what makes the claim checkable by a human:
+    // once in the Why sentence, once on the evidence card.
+    expect(screen.getAllByText(/Revision #3/).length).toBeGreaterThanOrEqual(2);
+    // Internal identifiers stay out of the UI — the source citation is the trace.
+    expect(screen.queryByText(/mem_abc123456789/)).not.toBeInTheDocument();
   });
 
   test('shows the number of supporting memories', () => {
@@ -75,7 +76,7 @@ describe('RecommendationCard', () => {
     await user.click(screen.getByRole('button', { name: /why\?/i }));
     // Stated in the Why sentence and again in place of an evidence list.
     expect(screen.getAllByText(/no client history applies/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.queryByTitle('Hindsight memory id')).not.toBeInTheDocument();
+    expect(screen.queryAllByText(/Revision #3/)).toHaveLength(0);
   });
 
   test('an avoid item is announced as such to assistive technology', () => {

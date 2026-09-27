@@ -3,10 +3,10 @@ import { EvidenceList } from './EvidenceCard';
 import type { RecommendationLine } from '../types/api';
 
 /**
- * One recommendation line with its collapsible Why panel.
+ * One point of direction, with its supporting memories one click away.
  *
- * Visual hierarchy is deliberate and follows the brief: the recommendation text
- * is primary, Why is one click away, evidence sits inside Why.
+ * Visually lighter than the recommendation itself: this is supporting detail,
+ * and the page hierarchy depends on it not competing with the headline.
  */
 export function RecommendationCard({
   line, variant,
@@ -17,56 +17,52 @@ export function RecommendationCard({
   const grounded = line.evidence.length > 0;
 
   return (
-    <li className={`card overflow-hidden border-l-2 ${isAvoid ? 'border-l-reject' : 'border-l-approve'}`}>
-      <div className="p-4">
-        <div className="flex items-start gap-2.5">
-          <span
-            className={`mt-0.5 shrink-0 text-sm font-semibold ${isAvoid ? 'text-reject' : 'text-approve'}`}
-            aria-hidden="true"
-          >
-            {isAvoid ? '✕' : '✓'}
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-[0.9375rem] font-medium leading-relaxed text-ink">
-              <span className="sr-only">{isAvoid ? 'Avoid: ' : 'Recommended: '}</span>
-              {line.text}
-            </p>
-            {line.rationale && (
-              <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{line.rationale}</p>
-            )}
-          </div>
-        </div>
+    <li className="border-b border-black/[0.06] pb-3.5 last:border-0 last:pb-0">
+      <div className="flex items-start gap-3">
+        <span
+          className={`mt-[0.15rem] shrink-0 text-sm font-semibold ${
+            isAvoid ? 'text-reject' : 'text-approve'
+          }`}
+          aria-hidden="true"
+        >
+          {isAvoid ? '✕' : '✓'}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[0.9375rem] font-medium leading-relaxed text-ink">
+            <span className="sr-only">{isAvoid ? 'Avoid: ' : 'Recommended: '}</span>
+            {line.text}
+          </p>
+          {line.rationale && (
+            <p className="mt-1 text-sm leading-relaxed text-ink-soft">{line.rationale}</p>
+          )}
 
-        <div className="mt-3 flex items-center gap-2 pl-6">
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            aria-expanded={open}
-            aria-controls={panelId}
-            className="btn-ghost -ml-2 px-2 py-1 text-xs"
-          >
-            <span aria-hidden="true" className={`transition-transform ${open ? 'rotate-90' : ''}`}>›</span>
-            {open ? 'Hide why' : 'Why?'}
-          </button>
-
-          {grounded ? (
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3">
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              aria-expanded={open}
+              aria-controls={panelId}
+              className="-ml-1 rounded px-1 py-0.5 text-xs font-medium text-accent transition-colors hover:text-accent-ring"
+            >
+              {open ? 'Hide why' : 'Why?'}
+            </button>
             <span className="text-[0.6875rem] text-ink-muted">
-              {line.evidence.length} memor{line.evidence.length === 1 ? 'y' : 'ies'}
+              {grounded
+                ? `${line.evidence.length} memor${line.evidence.length === 1 ? 'y' : 'ies'}`
+                : 'General practice'}
             </span>
-          ) : (
-            <span className="text-[0.6875rem] text-ink-muted">General practice</span>
+          </div>
+
+          {open && (
+            <div id={panelId} className="mt-2.5 rounded-lg bg-paper-sunken p-3">
+              <p className="eyebrow mb-1.5">Why this recommendation</p>
+              <p className="mb-2.5 text-sm leading-relaxed text-ink-soft">{line.why}</p>
+              <p className="eyebrow mb-1.5">Supporting memories</p>
+              <EvidenceList evidence={line.evidence} />
+            </div>
           )}
         </div>
       </div>
-
-      {open && (
-        <div id={panelId} className="border-t border-black/[0.06] bg-paper-sunken px-4 py-3.5 pl-10">
-          <p className="eyebrow mb-2">Why this recommendation</p>
-          <p className="mb-3 text-sm leading-relaxed text-ink-soft">{line.why}</p>
-          <p className="eyebrow mb-2">Supporting memories</p>
-          <EvidenceList evidence={line.evidence} />
-        </div>
-      )}
     </li>
   );
 }

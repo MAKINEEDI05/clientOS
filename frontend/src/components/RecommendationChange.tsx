@@ -3,10 +3,11 @@ import { scopeLabel } from '../lib/scope';
 import type { ResolveConflictResult } from '../types/api';
 
 /**
- * Why the recommendation is about to change.
+ * Why the direction is about to change.
  *
  * Built entirely from the resolution the backend returned — the statements, the
- * scope and the superseded memory are real state, not narration.
+ * scope and the superseded memory are real state. Nothing here is written for a
+ * particular scenario.
  */
 export function RecommendationChange({
   resolution, memoryHref, onRegenerate, regenerating,
@@ -18,48 +19,63 @@ export function RecommendationChange({
 }) {
   const newMemory = resolution.newMemory;
   const superseded = resolution.supersededMemory;
-
   if (!newMemory) return null;
 
   return (
-    <section className="card border-l-2 border-l-approve p-4" aria-live="polite">
-      <p className="eyebrow text-approve">Client memory updated</p>
-      <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
-        {superseded
-          ? 'A newer client preference now supersedes an earlier one, so the next recommendation will differ.'
-          : 'A new client preference was recorded, so the next recommendation will take it into account.'}
-      </p>
+    <section
+      aria-live="polite"
+      className="overflow-hidden rounded-2xl border border-approve/25 bg-approve-soft/25"
+    >
+      <div className="px-5 py-4">
+        <p className="eyebrow text-approve">Recommendation updated</p>
+        <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
+          {superseded
+            ? 'A newer client preference changed the direction.'
+            : 'A new client preference was recorded and will shape the next direction.'}
+        </p>
 
-      <dl className="mt-3.5 space-y-2.5">
-        {superseded && (
-          <div className="rounded-lg bg-paper-sunken px-3 py-2.5">
-            <dt className="eyebrow">Previously</dt>
-            <dd className="mt-0.5 text-sm leading-relaxed text-ink-muted line-through decoration-ink-muted/40">
-              {superseded.statement}
+        <dl className="mt-4 space-y-3">
+          {superseded && (
+            <div>
+              <dt className="eyebrow">Previous</dt>
+              <dd className="mt-1 text-sm leading-relaxed text-ink-muted line-through decoration-ink-muted/40">
+                {superseded.statement}
+              </dd>
+            </div>
+          )}
+          <div>
+            <dt className="eyebrow text-approve">Current</dt>
+            <dd className="mt-1 text-[0.9375rem] font-medium leading-relaxed text-ink">
+              {newMemory.statement}
             </dd>
             <dd className="mt-1 text-xs text-ink-muted">
-              Kept as history — {superseded.state === 'invalidated' ? 'retired from active use' : 'still applies elsewhere'}
+              Applies to: {scopeLabel(newMemory.scope)}
             </dd>
           </div>
+        </dl>
+
+        {superseded && (
+          <p className="mt-3 text-xs leading-relaxed text-ink-muted">
+            The previous preference is kept as history —{' '}
+            {superseded.state === 'invalidated' ? 'retired from active use' : 'it still applies elsewhere'}.
+          </p>
         )}
-        <div className="rounded-lg border border-approve/20 bg-approve-soft/30 px-3 py-2.5">
-          <dt className="eyebrow text-approve">Now</dt>
-          <dd className="mt-0.5 text-sm font-medium leading-relaxed text-ink">{newMemory.statement}</dd>
-          <dd className="mt-1 text-xs text-ink-soft">
-            Applies to: <span className="font-medium">{scopeLabel(newMemory.scope)}</span>
-          </dd>
+
+        {resolution.warnings.map((w, i) => (
+          <p key={i} className="mt-2 text-xs text-caution">{w}</p>
+        ))}
+
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <button type="button" className="btn-primary" onClick={onRegenerate} disabled={regenerating}>
+            {regenerating ? 'Regenerating…' : 'Generate updated direction'}
+          </button>
+          <Link
+            to={memoryHref}
+            className="text-sm font-medium text-accent transition-colors hover:text-accent-ring"
+          >
+            View memory change →
+          </Link>
         </div>
-      </dl>
-
-      {resolution.warnings.map((w, i) => (
-        <p key={i} className="mt-2 text-xs text-caution">{w}</p>
-      ))}
-
-      <div className="mt-3.5 flex flex-wrap gap-2">
-        <button type="button" className="btn-primary" onClick={onRegenerate} disabled={regenerating}>
-          {regenerating ? 'Regenerating…' : 'Generate updated direction'}
-        </button>
-        <Link to={memoryHref} className="btn-secondary">View memory timeline</Link>
       </div>
     </section>
   );
