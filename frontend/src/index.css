@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-paper-sunken text-ink font-sans antialiased;
+  }
+
+  /* Visible focus for every interactive element — never removed. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent-ring ring-offset-2 ring-offset-paper;
+  }
+
+  /* Respect a user's reduced-motion preference. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-black/[0.07] bg-paper shadow-card;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2
+           text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-accent text-white hover:bg-accent-ring;
+  }
+
+  .btn-secondary {
+    @apply btn border border-black/10 bg-paper text-ink-soft hover:bg-paper-sunken;
+  }
+
+  .btn-ghost {
+    @apply btn text-ink-muted hover:bg-paper-sunken hover:text-ink;
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-black/10 bg-paper px-3 py-2 text-sm
+           text-ink placeholder:text-ink-muted/70 focus:border-accent-ring;
+  }
+
+  .label {
+    @apply mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted;
+  }
+
+  .eyebrow {
+    @apply text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-ink-muted;
+  }
+
+  /* Screen-reader-only helper for accessible labels. */
+  .sr-only-focusable:not(:focus):not(:focus-within) {
+    @apply sr-only;
+  }
+}
