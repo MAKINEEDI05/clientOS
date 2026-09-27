@@ -75,6 +75,10 @@ npm run db:migrate
 Forward-only migrations in `backend/src/db/migrations/`, tracked in `schema_migrations`.
 Creates 11 tables, 34 indexes and 23 foreign keys.
 
+If you are upgrading an existing database, `006_project_description.sql` adds an optional
+`projects.description` column. It is additive and nullable, so existing rows and the seed path
+are unaffected.
+
 ## 6. Verify the memory loop — do this before anything else
 
 ```bash
@@ -91,6 +95,12 @@ Makes **live** Hindsight and Groq calls and checks:
 
 It writes to a throwaway bank (`verify-<timestamp>`) and deletes it afterwards. It never
 simulates either service — if credentials are missing it fails and says so.
+
+## 6a. Or start from scratch
+
+Seeding is only for the worked demo. To use ClientOS on your own data, start the app and use
+**+ Add client** — ClientOS provisions that client's memory as part of creating it. Then add a
+project and start recording feedback. No seed step is required.
 
 ## 7. Seed the demo
 

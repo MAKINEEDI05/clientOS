@@ -94,6 +94,15 @@ export async function listProjectsForClient(clientId: string): Promise<
   }));
 }
 
+/** True when a client slug is already taken. */
+export async function clientSlugExists(slug: string): Promise<boolean> {
+  const row = await queryOne<{ n: string }>(
+    'SELECT count(*) AS n FROM clients WHERE slug = $1',
+    [slug],
+  );
+  return Number(row?.n ?? 0) > 0;
+}
+
 export async function createClient(input: {
   slug: string;
   name: string;

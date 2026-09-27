@@ -4,6 +4,8 @@ import * as projectsRepo from '../repositories/projects.repo.js';
 import * as interactionsRepo from '../repositories/interactions.repo.js';
 import * as memoryRepo from '../repositories/memory.repo.js';
 import * as conflictsRepo from '../repositories/conflicts.repo.js';
+import * as clientsRepo from '../repositories/clients.repo.js';
+import { createProjectForClient } from '../services/projects.service.js';
 import { ensureDemoUser } from '../repositories/users.repo.js';
 import { submitInteraction } from '../services/interactions.service.js';
 import { parseBody, parseIdParam, parseQuery } from '../middleware/validate.js';
@@ -193,4 +195,40 @@ export async function getProjectConflicts(req: Request, res: Response): Promise<
     status as 'pending' | 'resolved' | 'dismissed' | 'all',
   );
   ok(res, { conflicts: conflicts.map(presentConflict) });
+}
+
+const createProjectSchema = z.object({
+  name: z.string().trim().min(1, 'A project name is required').max(80),
+  description: z.string().trim().max(500).optional(),
+});
+
+/** Create a project under a client. Projects are tags inside the client's bank. */
+export async function postClientProject(req: Request, res: Response): Promise<void> {
+  const idOrSlug = parseIdParam(req.params.clientId, 'Client');
+  const client = await clientsRepo.findClient(idOrSlug);
+  if (!client) throw AppError.notFound('Client');
+
+  const body = parseBody(createProjectSchema, req);
+  const project = await createProjectForClient({
+    clientId: client.id,
+    name: body.name,
+    description: body.description ?? null,
+  });
+
+  ok(
+    res,
+    {
+      project: {
+        id: project.id,
+        slug: project.slug,
+        name: project.name,
+        description: project.description,
+        status: project.status,
+        interactionCount: 0,
+        memoryCount: 0,
+        openConflicts: 0,
+      },
+    },
+    201,
+  );
 }

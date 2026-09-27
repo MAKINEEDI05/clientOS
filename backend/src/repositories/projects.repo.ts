@@ -52,13 +52,24 @@ export async function createProject(input: {
   clientId: string;
   slug: string;
   name: string;
+  description?: string | null;
 }): Promise<ProjectRow> {
   const row = await queryOne<ProjectRow>(
-    `INSERT INTO projects (client_id, slug, name) VALUES ($1, $2, $3) RETURNING *`,
-    [input.clientId, input.slug, input.name],
+    `INSERT INTO projects (client_id, slug, name, description)
+     VALUES ($1, $2, $3, $4) RETURNING *`,
+    [input.clientId, input.slug, input.name, input.description ?? null],
   );
   if (!row) throw new Error('project insert returned no row');
   return row;
+}
+
+/** True when a slug is already used by this client. */
+export async function projectSlugExists(clientId: string, slug: string): Promise<boolean> {
+  const row = await queryOne<{ n: string }>(
+    'SELECT count(*) AS n FROM projects WHERE client_id = $1 AND slug = $2',
+    [clientId, slug],
+  );
+  return Number(row?.n ?? 0) > 0;
 }
 
 export async function listAllProjects(): Promise<ProjectWithClient[]> {

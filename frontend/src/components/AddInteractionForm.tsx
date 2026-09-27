@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Spinner } from './States';
-import type { InteractionSource, SubmitInteractionResult } from '../types/api';
+import type { InteractionSource } from '../types/api';
 
 const SOURCES: Array<{ value: InteractionSource; label: string }> = [
   { value: 'revision', label: 'Revision' },
@@ -20,12 +20,11 @@ const MAX_CONTENT = 5000;
  * double-click creating duplicate memory.
  */
 export function AddInteractionForm({
-  onSubmit, pending, error, lastResult,
+  onSubmit, pending, error,
 }: {
   onSubmit: (input: { label: string; source: InteractionSource; content: string }) => void;
   pending: boolean;
   error: string | null;
-  lastResult: SubmitInteractionResult | null;
 }) {
   const [label, setLabel] = useState('');
   const [source, setSource] = useState<InteractionSource>('revision');
@@ -43,7 +42,11 @@ export function AddInteractionForm({
 
   return (
     <form onSubmit={handleSubmit} className="card p-4">
-      <h3 className="eyebrow mb-3">Record client feedback</h3>
+      <h3 className="eyebrow mb-1">Add client feedback</h3>
+      <p className="mb-3 text-xs leading-relaxed text-ink-muted">
+        Write what the client actually said. ClientOS works out what is worth remembering —
+        you do not categorise it.
+      </p>
 
       <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
         <div>
@@ -102,70 +105,9 @@ export function AddInteractionForm({
 
       <button type="submit" className="btn-primary mt-3" disabled={!canSubmit}>
         {pending && <Spinner />}
-        {pending ? 'Analysing feedback…' : 'Record feedback'}
+        {pending ? 'Analysing feedback…' : 'Add feedback'}
       </button>
 
-      {lastResult && <ExtractionReport result={lastResult} />}
     </form>
-  );
-}
-
-/**
- * Shows what was retained AND what was discarded.
- *
- * Surfacing the discards is the point: it demonstrates selectivity rather than
- * claiming it.
- */
-function ExtractionReport({ result }: { result: SubmitInteractionResult }) {
-  return (
-    <div className="mt-4 border-t border-black/[0.06] pt-3.5">
-      <p className="eyebrow mb-2">What ClientOS took from “{result.interaction.label}”</p>
-
-      {result.extracted.length === 0 && result.discarded.length === 0 && (
-        <p className="text-xs text-ink-muted">Nothing durable was found.</p>
-      )}
-
-      {result.extracted.length > 0 && (
-        <ul className="space-y-1.5">
-          {result.extracted.map((c, i) => (
-            <li key={i} className="flex items-start gap-2 text-xs leading-relaxed">
-              <span
-                aria-hidden="true"
-                className={c.retained ? 'text-approve' : 'text-caution'}
-              >
-                {c.retained ? '✓' : '⋯'}
-              </span>
-              <span className="text-ink-soft">
-                {c.statement}
-                {!c.retained && (
-                  <span className="text-caution">
-                    {' '}— held for your confirmation
-                  </span>
-                )}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {result.discarded.length > 0 && (
-        <details className="mt-2.5">
-          <summary className="cursor-pointer text-xs text-ink-muted hover:text-ink-soft">
-            Not stored ({result.discarded.length})
-          </summary>
-          <ul className="mt-1.5 space-y-1">
-            {result.discarded.map((d, i) => (
-              <li key={i} className="text-xs leading-relaxed text-ink-muted">
-                <span className="text-ink-soft">{d.text || '(fragment)'}</span> — {d.reason}
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
-
-      {result.warnings.map((w, i) => (
-        <p key={i} className="mt-2 text-xs text-caution">{w}</p>
-      ))}
-    </div>
   );
 }

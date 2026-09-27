@@ -49,6 +49,7 @@ export interface ProjectRow {
   client_id: string;
   slug: string;
   name: string;
+  description: string | null;
   status: string;
   created_at: Date;
 }

@@ -1,7 +1,8 @@
 import { request } from '../lib/api';
 import type {
-  ClientDetail, ClientSummary, Conflict, DemoResetResult, HealthStatus, Interaction,
-  MemoryItem, ProjectDetail, Recommendation, ResolveConflictResult, SubmitInteractionResult,
+  ClientDetail, ClientSummary, Conflict, CreateClientResult, DemoResetResult, HealthStatus,
+  Interaction, InvalidateMemoryResult, MemoryItem, ProjectDetail, ProjectSummary,
+  Recommendation, ResolveConflictResult, SubmitInteractionResult,
   ConflictScope, InteractionSource,
 } from '../types/api';
 
@@ -22,6 +23,26 @@ export const clients = {
   conflicts: (clientId: string, status = 'pending', signal?: AbortSignal) =>
     request<{ conflicts: Conflict[] }>(
       `/clients/${encodeURIComponent(clientId)}/conflicts?status=${status}`, { signal }),
+
+  /** Creates the client and provisions its memory automatically. */
+  create: (body: { name: string; description?: string; firstProjectName?: string }) =>
+    request<CreateClientResult>('/clients', { method: 'POST', body }),
+
+  createProject: (clientId: string, body: { name: string; description?: string }) =>
+    request<{ project: ProjectSummary }>(
+      `/clients/${encodeURIComponent(clientId)}/projects`, { method: 'POST', body }),
+};
+
+export const memories = {
+  /** Retires a memory from active reasoning. Never deletes — it stays as history. */
+  invalidate: (memoryId: string, reason?: string) =>
+    request<InvalidateMemoryResult>(
+      `/memories/${encodeURIComponent(memoryId)}/invalidate`,
+      { method: 'POST', body: reason ? { reason } : {} }),
+
+  restore: (memoryId: string) =>
+    request<InvalidateMemoryResult>(
+      `/memories/${encodeURIComponent(memoryId)}/restore`, { method: 'POST', body: {} }),
 };
 
 export const projects = {

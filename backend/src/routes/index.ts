@@ -8,6 +8,7 @@ import * as agent from '../controllers/agent.controller.js';
 import * as conflicts from '../controllers/conflicts.controller.js';
 import * as interactions from '../controllers/interactions.controller.js';
 import * as demo from '../controllers/demo.controller.js';
+import * as memory from '../controllers/memory.controller.js';
 
 /**
  * All ClientOS routes. Handlers live in controllers; controllers delegate to
@@ -22,9 +23,11 @@ apiRouter.get('/health/hindsight', asyncHandler(health.getHindsightHealth));
 
 // --- Clients ---
 apiRouter.get('/clients', asyncHandler(clients.listClients));
+apiRouter.post('/clients', asyncHandler(clients.postClient));
 apiRouter.get('/clients/:clientId', asyncHandler(clients.getClient));
 apiRouter.get('/clients/:clientId/memory', asyncHandler(clients.getClientMemory));
 apiRouter.get('/clients/:clientId/conflicts', asyncHandler(clients.getClientConflicts));
+apiRouter.post('/clients/:clientId/projects', asyncHandler(projects.postClientProject));
 
 // --- Projects ---
 apiRouter.get('/projects/:projectId', asyncHandler(projects.getProject));
@@ -35,6 +38,10 @@ apiRouter.get('/projects/:projectId/conflicts', asyncHandler(projects.getProject
 
 // --- Interactions ---
 apiRouter.post('/interactions/:interactionId/retry-retain', asyncHandler(interactions.postRetryRetain));
+
+// --- Memory curation (retire / restore; never deletes) ---
+apiRouter.post('/memories/:memoryId/invalidate', asyncHandler(memory.postInvalidateMemory));
+apiRouter.post('/memories/:memoryId/restore', asyncHandler(memory.postRestoreMemory));
 
 // --- Agent ---
 apiRouter.post('/agent/recommend', asyncHandler(agent.postRecommend));

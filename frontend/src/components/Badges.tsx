@@ -1,4 +1,5 @@
 import type { MemoryScope, MemoryState, MemoryType } from '../types/api';
+import { isBroadScope, scopeExplainer, scopeLabel } from '../lib/scope';
 
 const TYPE_STYLE: Record<MemoryType, { label: string; className: string; mark: string }> = {
   preference:        { label: 'Preference',        className: 'bg-accent-soft text-accent',   mark: '◆' },
@@ -36,25 +37,17 @@ export function TypeMark({ type }: { type: MemoryType | 'unknown' }) {
   );
 }
 
-const SCOPE_LABEL: Record<MemoryScope, string> = {
-  interaction: 'This interaction only',
-  revision: 'This revision',
-  project: 'This project',
-  client: 'Client-wide',
-  future: 'All future projects',
-};
-
 export function ScopeBadge({ scope }: { scope: MemoryScope | 'unknown' }) {
   if (scope === 'unknown') return null;
-  const broad = scope === 'client' || scope === 'future';
+  const broad = isBroadScope(scope);
   return (
     <span
       className={`inline-flex items-center rounded px-1.5 py-0.5 text-[0.6875rem] font-medium ${
         broad ? 'bg-accent text-white' : 'bg-paper-sunken text-ink-muted'
       }`}
-      title={`Scope: ${SCOPE_LABEL[scope]}`}
+      title={scopeExplainer(scope)}
     >
-      {SCOPE_LABEL[scope]}
+      {scopeLabel(scope)}
     </span>
   );
 }

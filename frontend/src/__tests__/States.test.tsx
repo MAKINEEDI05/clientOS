@@ -27,15 +27,20 @@ describe('ErrorState', () => {
     );
     render(<ErrorState error={error} />);
     expect(screen.getByRole('alert')).toBeInTheDocument();
-    expect(screen.getByText('Memory unavailable')).toBeInTheDocument();
+    expect(screen.getByText('Client memory temporarily unavailable')).toBeInTheDocument();
+    // Reassures the user their work is safe, without implying memory was used.
+    expect(screen.getByText(/Your request was not lost/i)).toBeInTheDocument();
     expect(screen.getByText(/No client history was used/i)).toBeInTheDocument();
   });
 
   test('an AI failure is distinguished from a memory failure', () => {
     const error = new ApiError({ code: 'LLM_UNAVAILABLE', message: 'AI failed.' }, 503);
     render(<ErrorState error={error} />);
-    expect(screen.getByText('AI unavailable')).toBeInTheDocument();
+    expect(screen.getByText('AI reasoning failed')).toBeInTheDocument();
+    expect(screen.getByText(/Your client data is safe/i)).toBeInTheDocument();
+    // An AI failure must never be dressed up as a memory failure.
     expect(screen.queryByText(/No client history was used/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Client memory temporarily unavailable/i)).not.toBeInTheDocument();
   });
 
   test('a network failure tells the user the app cannot be reached', () => {
@@ -49,14 +54,21 @@ describe('ErrorState', () => {
     const onRetry = vi.fn();
     const error = new ApiError({ code: 'MEMORY_UNAVAILABLE', message: 'down' }, 503);
     render(<ErrorState error={error} onRetry={onRetry} />);
-    await user.click(screen.getByRole('button', { name: /try again/i }));
+    await user.click(screen.getByRole('button', { name: /retry/i }));
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
   test('does NOT offer retry for a validation error', () => {
     const error = new ApiError({ code: 'VALIDATION_ERROR', message: 'bad input' }, 400);
     render(<ErrorState error={error} onRetry={vi.fn()} />);
-    expect(screen.queryByRole('button', { name: /try again/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /retry/i })).not.toBeInTheDocument();
+  });
+
+  test('a database failure says the change was not saved', () => {
+    const error = new ApiError({ code: 'DATABASE_UNAVAILABLE', message: 'db down' }, 503);
+    render(<ErrorState error={error} />);
+    expect(screen.getByText("Couldn't save")).toBeInTheDocument();
+    expect(screen.getByText(/was not saved/i)).toBeInTheDocument();
   });
 
   test('shows the request id so a failure can be traced in logs', () => {

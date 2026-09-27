@@ -57,15 +57,17 @@ Hindsight Recall  ──►  Groq reasoning  ──►  Recommendation + Why/evi
 | **Preference conflicts** | A contradiction halts the write, shows both statements, and asks how widely the change applies. Nothing reaches memory until a human confirms. |
 | **Preserved history** | No memory is ever deleted. Project-scoped changes mark the old preference superseded; client-wide changes invalidate it, which keeps it auditable and restorable. |
 | **Honest failure** | If Hindsight is unreachable the request fails rather than answering without history. The header badge reflects live, authenticated memory status. |
+| **Self-service setup** | Adding a client provisions their memory automatically; adding a project and recording feedback need no configuration. The memory layer is never exposed as a concept the user has to manage. |
+| **Visible extraction** | After each piece of feedback, ClientOS shows what it understood, how widely it applies and where it came from — including what it chose *not* to store, and why. |
 
 ### Screens
 
 | Screen | Route | Shows |
 |---|---|---|
 | Dashboard | `/` | Clients, decision counts, open confirmations |
-| Client Workspace | `/clients/:id` | Record feedback; current preferences, approvals, rejections |
+| Client Workspace | `/clients/:id` | Switch or add projects; record feedback and see what was understood; current preferences, approvals, rejections |
 | AI Workspace | `/clients/:id/ai` | Ask ClientOS; recommendation → Why → evidence; resolve conflicts |
-| Memory Timeline | `/clients/:id/memory` | How decisions evolved, superseded entries included |
+| Memory Timeline | `/clients/:id/memory` | How decisions evolved — current, superseded and retired entries, with replacements linked |
 
 ## 7. Non-goals
 

@@ -132,6 +132,13 @@ replacement.
 
 ---
 
+## If asked: starting from nothing
+
+The demo runs on seeded data, but nothing about it is special. **+ Add client** creates a client
+and provisions their memory in one step; add a project, paste in a real piece of client
+feedback, and ClientOS shows what it understood and what it ignored. With no clients at all the
+dashboard explains the three-step loop rather than showing empty counters.
+
 ## If asked: isolation
 
 Open **Northwind Labs → AI Workspace**, same question. The answer is bold, saturated colour and

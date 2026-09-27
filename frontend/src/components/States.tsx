@@ -48,13 +48,26 @@ export function ErrorState({
   const isMemory = apiError?.isMemoryFailure ?? false;
   const isLlm = apiError?.isLlmFailure ?? false;
 
+  const isDatabase = apiError?.code === 'DATABASE_UNAVAILABLE';
+
   const heading = isMemory
-    ? 'Memory unavailable'
+    ? 'Client memory temporarily unavailable'
     : isLlm
-      ? 'AI unavailable'
-      : apiError?.code === 'NETWORK'
-        ? 'Cannot reach ClientOS'
-        : 'Something went wrong';
+      ? 'AI reasoning failed'
+      : isDatabase
+        ? "Couldn't save"
+        : apiError?.code === 'NETWORK'
+          ? 'Cannot reach ClientOS'
+          : 'Something went wrong';
+
+  // Written for the person, not the operator: what happened, and what is safe.
+  const reassurance = isMemory
+    ? "We couldn't access this client's memory. Your request was not lost."
+    : isLlm
+      ? 'The recommendation could not be generated. Your client data is safe.'
+      : isDatabase
+        ? 'Your change was not saved. Nothing else was affected.'
+        : null;
 
   const tone = isMemory ? 'caution' : 'reject';
 
@@ -66,13 +79,19 @@ export function ErrorState({
       }`}
     >
       <p className="text-sm font-semibold text-ink">{heading}</p>
-      <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
+      {reassurance && <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{reassurance}</p>}
+      <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">
         {error instanceof Error ? error.message : 'An unexpected error occurred.'}
       </p>
 
       {isMemory && (
         <p className="mt-2 text-sm font-medium text-caution">
           No client history was used. ClientOS will not generate a recommendation it cannot ground in memory.
+        </p>
+      )}
+      {isLlm && (
+        <p className="mt-2 text-sm text-ink-soft">
+          Client memory is unaffected — nothing was added or changed.
         </p>
       )}
       {context && <p className="mt-2 text-xs text-ink-muted">{context}</p>}
@@ -82,7 +101,7 @@ export function ErrorState({
 
       {onRetry && (apiError?.isRetryable ?? true) && (
         <button type="button" onClick={onRetry} className="btn-secondary mt-3">
-          Try again
+          Retry
         </button>
       )}
     </div>

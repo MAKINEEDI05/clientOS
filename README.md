@@ -82,6 +82,16 @@ meaning without it.
 
 ---
 
+## Using it
+
+1. **Add a client.** ClientOS provisions that client's decision memory as part of creating
+   them — there is no separate setup step, and nothing about the memory layer is exposed.
+2. **Add a project.** A stream of work. Feedback and decisions are recorded against it, and a
+   client can have several.
+3. **Add feedback.** Write what the client actually said. You never pick a category —
+   ClientOS works out what is worth remembering and shows you exactly what it understood.
+4. **Ask for a direction.** Every claim about the client cites the decision it came from.
+
 ## What it does
 
 ### 1. Extracts only durable decisions
@@ -94,6 +104,12 @@ and vague remarks.
 
 Every candidate must quote the source text verbatim; a candidate whose quote is not literally
 present is dropped. That is the primary defence against invented preferences.
+
+After each submission ClientOS shows what it took from the feedback — the memory type, how
+widely it applies, and which interaction it came from — so the step from *what the client said*
+to *what is now remembered* is visible rather than implied. One message can yield several
+distinct signals: "the serif treatment is right, but drop the shadows" becomes an approval and
+a rejection, separately.
 
 ### 2. Recalls with real scope isolation
 
@@ -120,7 +136,10 @@ asks how widely the change applies. Nothing is written to memory until a human c
 | All future projects | New memory at client scope + a client-tagged directive. Old memory is **invalidated** — removed from recall, but auditable and restorable. |
 
 Nothing is ever deleted. The timeline shows the old preference struck through with its
-replacement linked.
+replacement linked, marked **Superseded**, alongside the **Current** one.
+
+A memory can also be retired by hand from the timeline. That stops it shaping recommendations
+but keeps it visible as history, and it can be restored.
 
 ### 5. Tells the truth when it cannot remember
 

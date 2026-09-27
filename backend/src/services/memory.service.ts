@@ -1,5 +1,8 @@
 import { createHash } from 'node:crypto';
 import { retainForBank, type RetainMemoryInput } from '../hindsight/retain.js';
+import { invalidateMemory, restoreMemory } from '../hindsight/curate.js';
+import * as clientsRepo from '../repositories/clients.repo.js';
+import { AppError } from '../utils/errors.js';
 import { listMemoriesByDocument } from '../hindsight/recall.js';
 import * as memoryRepo from '../repositories/memory.repo.js';
 import type { MemoryScope, MemoryType } from '../types/domain.js';
@@ -174,4 +177,97 @@ export async function reconcileMemoryId(
 
   await memoryRepo.setHindsightMemoryId(memoryRefId, best.id);
   return best.id;
+}
+
+export interface InvalidateMemoryResult {
+  memoryRefId: string;
+  statement: string;
+  state: string;
+  /** True when the memory was retired in Hindsight as well as locally. */
+  retiredInMemoryService: boolean;
+  warnings: string[];
+}
+
+/**
+ * Retire a memory from active reasoning.
+ *
+ * Uses Hindsight's invalidation model, which removes a memory from recall,
+ * consolidation and the graph while keeping it auditable and restorable. Nothing
+ * is deleted — the memory stays on the timeline as history, which is the whole
+ * point (docs/PRODUCT_DECISIONS.md Decision 3).
+ */
+export async function invalidateMemoryRef(
+  memoryRefId: string,
+  reason: string,
+): Promise<InvalidateMemoryResult> {
+  const ref = await memoryRepo.findMemoryRef(memoryRefId);
+  if (!ref) throw AppError.notFound('Memory');
+
+  if (ref.state === 'invalidated') {
+    throw AppError.conflict('This memory has already been retired.');
+  }
+
+  const client = await clientsRepo.findClient(ref.client_id);
+  if (!client) throw AppError.notFound('Client');
+
+  const warnings: string[] = [];
+  let retired = false;
+
+  if (ref.hindsight_memory_id) {
+    const result = await invalidateMemory(
+      client.hindsight_bank_id,
+      ref.hindsight_memory_id,
+      reason.slice(0, 500),
+    );
+    retired = result.ok;
+    if (!result.ok) warnings.push(result.reason);
+  } else {
+    // No resolved Hindsight id means nothing to retire upstream. Say so rather
+    // than implying the memory service was updated.
+    warnings.push('This memory has no resolved memory-service id, so only the local record was updated.');
+  }
+
+  await memoryRepo.setMemoryState(memoryRefId, 'invalidated');
+
+  logger.info('memory invalidated', { memoryRefId, retiredInMemoryService: retired });
+
+  return {
+    memoryRefId,
+    statement: ref.statement,
+    state: 'invalidated',
+    retiredInMemoryService: retired,
+    warnings,
+  };
+}
+
+/** Restore a previously retired memory. Invalidation is reversible by design. */
+export async function restoreMemoryRef(memoryRefId: string): Promise<InvalidateMemoryResult> {
+  const ref = await memoryRepo.findMemoryRef(memoryRefId);
+  if (!ref) throw AppError.notFound('Memory');
+  if (ref.state !== 'invalidated') {
+    throw AppError.conflict('This memory is not retired.');
+  }
+
+  const client = await clientsRepo.findClient(ref.client_id);
+  if (!client) throw AppError.notFound('Client');
+
+  const warnings: string[] = [];
+  let restored = false;
+  if (ref.hindsight_memory_id) {
+    await restoreMemory(client.hindsight_bank_id, ref.hindsight_memory_id);
+    restored = true;
+  } else {
+    warnings.push('This memory has no resolved memory-service id, so only the local record was updated.');
+  }
+
+  await memoryRepo.setMemoryState(memoryRefId, 'valid');
+  logger.info('memory restored', { memoryRefId });
+
+  return {
+    memoryRefId,
+    statement: ref.statement,
+    state: 'valid',
+    retiredInMemoryService: restored,
+    warnings,
+  };
 }

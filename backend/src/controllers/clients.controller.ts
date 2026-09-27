@@ -3,7 +3,8 @@ import { z } from 'zod';
 import * as clientsRepo from '../repositories/clients.repo.js';
 import * as memoryRepo from '../repositories/memory.repo.js';
 import * as conflictsRepo from '../repositories/conflicts.repo.js';
-import { parseIdParam, parseQuery } from '../middleware/validate.js';
+import { parseBody, parseIdParam, parseQuery } from '../middleware/validate.js';
+import { createClientWithBank } from '../services/clients.service.js';
 import { ok } from '../utils/respond.js';
 import { AppError } from '../utils/errors.js';
 import { MEMORY_STATES, MEMORY_TYPES } from '../types/domain.js';
@@ -134,4 +135,42 @@ export function presentConflict(c: {
     createdAt: c.created_at,
     resolvedAt: c.resolved_at,
   };
+}
+
+const createClientSchema = z.object({
+  name: z.string().trim().min(1, 'A client name is required').max(80),
+  description: z.string().trim().max(500).optional(),
+  firstProjectName: z.string().trim().max(80).optional(),
+});
+
+/**
+ * Create a client and its memory bank in one step.
+ *
+ * The caller never sees or supplies a bank id — memory provisioning is an
+ * implementation detail of creating a client.
+ */
+export async function postClient(req: Request, res: Response): Promise<void> {
+  const body = parseBody(createClientSchema, req);
+  const result = await createClientWithBank({
+    name: body.name,
+    description: body.description ?? null,
+    firstProjectName: body.firstProjectName ?? null,
+  });
+
+  ok(
+    res,
+    {
+      client: {
+        id: result.client.id,
+        slug: result.client.slug,
+        name: result.client.name,
+        industry: result.client.industry,
+        context: result.client.context,
+      },
+      projectId: result.projectId,
+      projectSlug: result.projectSlug,
+      memoryReady: true,
+    },
+    201,
+  );
 }

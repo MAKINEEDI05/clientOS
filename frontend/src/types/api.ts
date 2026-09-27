@@ -49,6 +49,7 @@ export interface ProjectSummary {
   id: string;
   slug: string;
   name: string;
+  description?: string | null;
   status: string;
   interactionCount: number;
   memoryCount: number;
@@ -190,5 +191,20 @@ export interface DemoResetResult {
   interactionsSeeded: number;
   memoriesRetained: number;
   bankId: string;
+  warnings: string[];
+}
+
+export interface CreateClientResult {
+  client: { id: string; slug: string; name: string; industry: string | null; context: string | null };
+  projectId: string | null;
+  projectSlug: string | null;
+  memoryReady: boolean;
+}
+
+export interface InvalidateMemoryResult {
+  memoryRefId: string;
+  statement: string;
+  state: MemoryState;
+  retiredInMemoryService: boolean;
   warnings: string[];
 }

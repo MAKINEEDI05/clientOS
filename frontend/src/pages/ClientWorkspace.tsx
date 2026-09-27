@@ -1,9 +1,15 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAsync, useMutation } from '../hooks/useAsync';
+import { useActiveProject } from '../hooks/useActiveProject';
+import { useMemoryHealth } from '../hooks/useMemoryHealth';
 import { clients, projects } from '../services/clientos';
 import { MemoryPanel } from '../components/MemoryPanel';
 import { AddInteractionForm } from '../components/AddInteractionForm';
+import { AddProjectDialog } from '../components/AddProjectDialog';
+import { ProjectSwitcher } from '../components/ProjectSwitcher';
+import { FeedbackResult } from '../components/FeedbackResult';
+import { ClientContextBar } from '../components/ClientContextBar';
 import { EmptyState, ErrorState, LoadingState } from '../components/States';
 import { formatDate, formatSource } from '../lib/format';
 import type { Interaction, InteractionSource, SubmitInteractionResult } from '../types/api';
@@ -11,9 +17,13 @@ import type { Interaction, InteractionSource, SubmitInteractionResult } from '..
 export function ClientWorkspace() {
   const { clientId = '' } = useParams();
   const [lastResult, setLastResult] = useState<SubmitInteractionResult | null>(null);
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
+  const { status: health } = useMemoryHealth();
 
   const clientState = useAsync((s) => clients.get(clientId, s), [clientId]);
-  const activeProjectId = clientState.data?.projects[0]?.id ?? '';
+  const { activeProject, activeProjectId, setActiveProject } = useActiveProject(
+    clientState.data?.projects,
+  );
 
   const projectState = useAsync(
     (s) => projects.get(activeProjectId, s),
@@ -26,20 +36,34 @@ export function ClientWorkspace() {
     { enabled: Boolean(activeProjectId) },
   );
 
-  const submit = useMutation(async (input: { label: string; source: InteractionSource; content: string }) => {
-    const result = await projects.submitInteraction(activeProjectId, input);
-    setLastResult(result);
-    projectState.reload();
-    interactionsState.reload();
-    return result;
+  const submit = useMutation(
+    async (input: { label: string; source: InteractionSource; content: string }) => {
+      const result = await projects.submitInteraction(activeProjectId, input);
+      setLastResult(result);
+      projectState.reload();
+      interactionsState.reload();
+      clientState.reload();
+      return result;
+    },
+  );
+
+  const createProject = useMutation(async (input: { name: string; description?: string }) => {
+    const { project } = await clients.createProject(clientId, input);
+    setProjectDialogOpen(false);
+    await clientState.reload();
+    setActiveProject(project.slug);
+    return project;
   });
 
   if (clientState.loading) return <LoadingState label="Loading client" />;
-  if (clientState.error) return <ErrorState error={clientState.error} onRetry={clientState.reload} />;
+  if (clientState.error !== null) {
+    return <ErrorState error={clientState.error} onRetry={clientState.reload} />;
+  }
   if (!clientState.data) return null;
 
   const { client, projects: projectList } = clientState.data;
   const memory = projectState.data?.memory;
+  const memoryHref = `/clients/${clientId}/memory${activeProject ? `?project=${activeProject.slug}` : ''}`;
 
   return (
     <div className="space-y-6">
@@ -50,45 +74,81 @@ export function ClientWorkspace() {
           {client.context && (
             <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink-muted">{client.context}</p>
           )}
-          <p className="mt-1.5 font-mono text-[0.6875rem] text-ink-muted">
-            memory bank: {client.hindsightBankId}
-          </p>
         </div>
-        <Link to={`/clients/${clientId}/ai`} className="btn-primary shrink-0">
-          Ask ClientOS →
-        </Link>
+        {activeProject && (
+          <Link
+            to={`/clients/${clientId}/ai?project=${activeProject.slug}`}
+            className="btn-primary shrink-0"
+          >
+            Ask ClientOS →
+          </Link>
+        )}
       </header>
 
-      {projectList.length === 0 && (
-        <EmptyState title="No projects yet" description="This client has no projects to work on." />
-      )}
-
-      {projectList.length > 0 && (
+      {projectList.length === 0 ? (
+        <EmptyState
+          title="No projects yet"
+          description="A project is a stream of work for this client. Feedback and decisions are recorded against it."
+          action={
+            <button type="button" className="btn-primary" onClick={() => setProjectDialogOpen(true)}>
+              + Add the first project
+            </button>
+          }
+        />
+      ) : (
         <>
-          <section className="card p-4">
-            <p className="eyebrow">Active project</p>
-            <h2 className="mt-1 font-display text-lg text-ink">{projectList[0]?.name}</h2>
-            <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-2 border-t border-black/[0.06] pt-3 text-sm">
-              <Stat label="Memories" value={projectState.data?.memoryCount ?? projectList[0]?.memoryCount ?? 0} />
-              <Stat label="Interactions" value={projectList[0]?.interactionCount ?? 0} />
-              <Stat label="Awaiting confirmation" value={projectState.data?.openConflicts ?? 0} />
-            </dl>
-            {(projectState.data?.openConflicts ?? 0) > 0 && (
-              <Link to={`/clients/${clientId}/ai`} className="btn-secondary mt-3">
-                Review {projectState.data?.openConflicts} preference change
-                {(projectState.data?.openConflicts ?? 0) === 1 ? '' : 's'}
-              </Link>
-            )}
-          </section>
+          <ProjectSwitcher
+            projects={projectList}
+            activeId={activeProjectId}
+            onSelect={setActiveProject}
+            onAdd={() => setProjectDialogOpen(true)}
+          />
 
-          <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+          {activeProject && (
+            <ClientContextBar
+              clientName={client.name}
+              projectName={activeProject.name}
+              memoryCount={projectState.data?.memoryCount ?? activeProject.memoryCount}
+              interactionCount={activeProject.interactionCount}
+              memoryConnected={health?.connected ?? false}
+            />
+          )}
+
+          {activeProject?.description && (
+            <p className="text-sm leading-relaxed text-ink-muted">{activeProject.description}</p>
+          )}
+
+          {(projectState.data?.openConflicts ?? 0) > 0 && activeProject && (
+            <div className="card border-l-2 border-l-caution bg-caution-soft/25 p-4">
+              <p className="text-sm font-medium text-ink">
+                {projectState.data?.openConflicts} preference change
+                {(projectState.data?.openConflicts ?? 0) === 1 ? '' : 's'} awaiting your confirmation
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+                ClientOS has not stored these yet — it needs to know how widely they apply.
+              </p>
+              <Link to={`/clients/${clientId}/ai?project=${activeProject.slug}`} className="btn-secondary mt-3">
+                Review now
+              </Link>
+            </div>
+          )}
+
+          <div className="grid gap-6 lg:grid-cols-2">
             <div className="space-y-6">
               <AddInteractionForm
                 onSubmit={(input) => void submit.run(input)}
                 pending={submit.pending}
                 error={submit.errorMessage}
-                lastResult={lastResult}
               />
+
+              {lastResult && (
+                <FeedbackResult
+                  result={lastResult}
+                  memoryHref={memoryHref}
+                  onDismiss={() => setLastResult(null)}
+                />
+              )}
+
               <InteractionHistory state={interactionsState} />
             </div>
 
@@ -106,7 +166,7 @@ export function ClientWorkspace() {
                   <MemoryPanel
                     title="Current preferences"
                     memories={memory.preferences}
-                    emptyLabel="No preferences recorded yet."
+                    emptyLabel="No preferences yet — add feedback and ClientOS will extract them."
                   />
                   <MemoryPanel
                     title="Approved"
@@ -115,16 +175,12 @@ export function ClientWorkspace() {
                   />
                   <MemoryPanel
                     title="Rejected approaches"
-                    description="ClientOS will steer away from these in every recommendation."
+                    description="ClientOS steers away from these in every recommendation."
                     memories={memory.rejections}
                     emptyLabel="Nothing rejected yet."
                   />
                   {memory.changes.length > 0 && (
-                    <MemoryPanel
-                      title="Confirmed preference changes"
-                      memories={memory.changes}
-                      emptyLabel=""
-                    />
+                    <MemoryPanel title="Confirmed preference changes" memories={memory.changes} emptyLabel="" />
                   )}
                   {memory.constraints.length > 0 && (
                     <MemoryPanel title="Constraints" memories={memory.constraints} emptyLabel="" />
@@ -138,15 +194,18 @@ export function ClientWorkspace() {
           </div>
         </>
       )}
-    </div>
-  );
-}
 
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div>
-      <dt className="text-[0.6875rem] uppercase tracking-wide text-ink-muted">{label}</dt>
-      <dd className="mt-0.5 font-display text-lg tabular-nums text-ink">{value}</dd>
+      <AddProjectDialog
+        open={projectDialogOpen}
+        onClose={() => {
+          createProject.reset();
+          setProjectDialogOpen(false);
+        }}
+        onSubmit={(input) => void createProject.run(input)}
+        pending={createProject.pending}
+        error={createProject.error}
+        clientName={client.name}
+      />
     </div>
   );
 }
@@ -155,12 +214,17 @@ function InteractionHistory({
   state,
 }: { state: ReturnType<typeof useAsync<{ interactions: Interaction[]; total: number }>> }) {
   if (state.loading) return <LoadingState label="Loading history" rows={2} />;
-  if (state.error) return <ErrorState error={state.error} onRetry={state.reload} />;
+  if (state.error !== null) return <ErrorState error={state.error} onRetry={state.reload} />;
   if (!state.data || state.data.interactions.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed border-black/10 px-3 py-4 text-center text-xs text-ink-muted">
-        No interactions recorded yet.
-      </p>
+      <section>
+        <h3 className="eyebrow mb-2.5">Project history</h3>
+        <p className="rounded-lg border border-dashed border-black/10 px-3 py-5 text-center text-xs leading-relaxed text-ink-muted">
+          No feedback recorded yet.
+          <br />
+          Add what the client told you and it will appear here.
+        </p>
+      </section>
     );
   }
 
@@ -190,7 +254,10 @@ function InteractionHistory({
 
 function RetainStatusChip({ status, count }: { status: Interaction['retainStatus']; count: number }) {
   const map: Record<Interaction['retainStatus'], { label: string; className: string }> = {
-    retained: { label: `${count} memor${count === 1 ? 'y' : 'ies'} stored`, className: 'bg-approve-soft text-approve' },
+    retained: {
+      label: `${count} memor${count === 1 ? 'y' : 'ies'} stored`,
+      className: 'bg-approve-soft text-approve',
+    },
     awaiting_confirmation: { label: 'Awaiting your confirmation', className: 'bg-caution-soft text-caution' },
     failed: { label: 'Not stored in memory', className: 'bg-reject-soft text-reject' },
     pending: { label: 'Processing…', className: 'bg-paper-sunken text-ink-muted' },

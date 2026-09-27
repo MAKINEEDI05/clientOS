@@ -81,6 +81,36 @@ Query: `type`, `state`, `limit`, `offset`. Client-wide timeline.
 ### `GET /api/clients/:clientId/conflicts`
 Query: `status` = `pending` (default) · `resolved` · `dismissed` · `all`.
 
+### `POST /api/clients`
+
+Creates a client **and provisions its memory**. The caller never supplies or sees anything
+about the memory layer.
+
+```json
+{ "name": "Vive Studio", "description": "Premium design studio.", "firstProjectName": "Premium Website Redesign" }
+```
+
+`name` required, ≤ 80 chars. `description` and `firstProjectName` optional, ≤ 500 / ≤ 80.
+
+`201 { client: { id, slug, name, industry, context }, projectId, projectSlug, memoryReady }`
+
+The memory bank is created **before** the database row, so a client row only exists once its
+memory exists — there is no way to end up with a client that looks usable but cannot store
+memory. Errors: `400` invalid name · `409` name already taken · **`503 MEMORY_UNAVAILABLE`, in
+which case nothing is created at all**.
+
+### `POST /api/clients/:clientId/projects`
+
+```json
+{ "name": "Premium Website Redesign", "description": "Full redesign of the marketing site." }
+```
+
+`201 { project: { id, slug, name, description, status, interactionCount, memoryCount, openConflicts } }`
+
+A project is a tag inside the client's existing bank, not a bank of its own, so this path does
+no memory-layer work and cannot fail on it. Errors: `400` · `404` unknown client · `409`
+duplicate name for that client.
+
 ---
 
 ## Projects
@@ -141,6 +171,27 @@ As the client-level endpoint, scoped to one project.
 ### `POST /api/interactions/:interactionId/retry-retain`
 Re-runs retain after a failure — necessary because the Hindsight SDK never auto-retries writes.
 `200 { retainStatus, retained, discarded }` · `409` if already retained or awaiting confirmation.
+
+---
+
+## Memory curation
+
+### `POST /api/memories/:memoryId/invalidate`
+
+Retires a memory from active reasoning. Optional `{ "reason": "…" }`.
+
+`200 { memoryRefId, statement, state: "invalidated", retiredInMemoryService, warnings }`
+
+**Nothing is deleted.** The memory disappears from recall and stops shaping recommendations,
+but remains on the timeline as history and can be restored. `retiredInMemoryService` is `false`
+when the memory had no resolved memory-service id, and the reason is returned in `warnings`
+rather than the result being reported as a clean success.
+
+Errors: `400` malformed id · `404` · `409` already retired.
+
+### `POST /api/memories/:memoryId/restore`
+
+Reverses the above. `200` with `state: "valid"` · `409` if the memory is not retired.
 
 ---
 
