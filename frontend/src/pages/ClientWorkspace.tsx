@@ -118,19 +118,27 @@ export function ClientWorkspace() {
             <p className="text-sm leading-relaxed text-ink-muted">{activeProject.description}</p>
           )}
 
-          {(projectState.data?.openConflicts ?? 0) > 0 && activeProject && (
-            <div className="card border-l-2 border-l-caution bg-caution-soft/25 p-4">
-              <p className="text-sm font-medium text-ink">
-                {projectState.data?.openConflicts} preference change
+          {activeProject && (projectState.data?.openConflicts ?? 0) > 0 && (
+            <div className="card border-l-2 border-l-accent bg-accent-soft/30 p-4">
+              <p className="eyebrow text-accent">Preference change detected</p>
+              <p className="mt-1.5 text-sm font-medium text-ink">
+                {projectState.data?.openConflicts} change
                 {(projectState.data?.openConflicts ?? 0) === 1 ? '' : 's'} awaiting your confirmation
               </p>
               <p className="mt-1 text-xs leading-relaxed text-ink-muted">
-                ClientOS has not stored these yet — it needs to know how widely they apply.
+                ClientOS has not stored {(projectState.data?.openConflicts ?? 0) === 1 ? 'it' : 'them'} yet —
+                it needs to know how widely {(projectState.data?.openConflicts ?? 0) === 1 ? 'it applies' : 'they apply'}.
               </p>
-              <Link to={`/clients/${clientId}/ai?project=${activeProject.slug}`} className="btn-secondary mt-3">
-                Review now
+              <Link to={`/clients/${clientId}/ai?project=${activeProject.slug}`} className="btn-primary mt-3">
+                Review change →
               </Link>
             </div>
+          )}
+
+          {activeProject && projectState.data && projectState.data.openConflicts === 0 && (
+            <p className="text-xs text-ink-muted">
+              No unresolved preference conflicts for this project.
+            </p>
           )}
 
           <div className="grid gap-6 lg:grid-cols-2">

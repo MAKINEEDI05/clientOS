@@ -6,13 +6,15 @@ import { useMemoryHealth } from '../hooks/useMemoryHealth';
 import { agent, clients, conflicts as conflictsApi, projects } from '../services/clientos';
 import { RecommendationCard } from '../components/RecommendationCard';
 import { ClientEvidence } from '../components/ClientEvidence';
-import { ConflictCard } from '../components/ConflictCard';
+import { ConflictCard, findOldMemory } from '../components/ConflictCard';
+import { ConflictResolved } from '../components/ConflictResolved';
 import { FeedbackComposer } from '../components/FeedbackComposer';
 import { MemoryToggle } from '../components/MemoryToggle';
 import { GenerationProgress } from '../components/GenerationProgress';
 import { RecommendationChange } from '../components/RecommendationChange';
 import { ClientContextBar } from '../components/ClientContextBar';
 import { EmptyState, ErrorState } from '../components/States';
+import { forgetDirection, recallDirection, rememberDirection } from '../lib/lastDirection';
 import type { ConflictScope, Recommendation, ResolveConflictResult } from '../types/api';
 
 const DEFAULT_REQUEST = 'Create the next homepage direction.';
@@ -37,6 +39,9 @@ export function AIWorkspace() {
   const [result, setResult] = useState<Recommendation | null>(null);
   const [feedbackDone, setFeedbackDone] = useState(false);
   const [lastResolution, setLastResolution] = useState<ResolveConflictResult | null>(null);
+  // The direction that was on screen when a preference change was applied.
+  // Kept so the before/after comparison uses real output, not a re-description.
+  const [supersededSummary, setSupersededSummary] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const { status: health } = useMemoryHealth();
 
@@ -53,10 +58,16 @@ export function AIWorkspace() {
     [activeProjectId],
     { enabled: Boolean(activeProjectId) },
   );
+  // Used only to give the previous decision its source and scope in the conflict
+  // panel — the conflict payload carries the statement but not its provenance.
+  const memoryState = useAsync(
+    (s) => projects.memory(activeProjectId, '', s),
+    [activeProjectId],
+    { enabled: Boolean(activeProjectId) },
+  );
 
   const ask = useMutation(async () => {
     setFeedbackDone(false);
-    setLastResolution(null);
     const response = await agent.recommend({
       clientId: clientState.data!.client.id,
       projectId: activeProjectId,
@@ -64,6 +75,7 @@ export function AIWorkspace() {
       useMemory,
     });
     setResult(response);
+    rememberDirection(activeProjectId, response.summary);
     return response;
   });
 
@@ -82,9 +94,14 @@ export function AIWorkspace() {
       const res = await conflictsApi.resolve(conflictId, scope ? { resolution, scope } : { resolution });
       conflictState.reload();
       projectState.reload();
-      // Memory changed, so the recommendation on screen is now stale.
+      memoryState.reload();
+      // Memory changed, so the direction on screen is now stale. Hold on to its
+      // summary first — it is the honest "before" for the comparison.
+      setSupersededSummary(
+        res.newMemory ? (result?.summary ?? recallDirection(activeProjectId)) : null,
+      );
       setResult(null);
-      setLastResolution(res.newMemory ? res : null);
+      setLastResolution(res);
       return res;
     },
   );
@@ -136,6 +153,7 @@ export function AIWorkspace() {
             <ConflictCard
               key={conflict.id}
               conflict={conflict}
+              oldMemory={findOldMemory(conflict, memoryState.data?.memories)}
               pending={resolve.pending}
               error={resolve.errorMessage}
               onResolve={(resolution, scope) => void resolve.run(conflict.id, resolution, scope)}
@@ -145,9 +163,21 @@ export function AIWorkspace() {
       )}
 
       {lastResolution && (
-        <RecommendationChange
+        <ConflictResolved
           resolution={lastResolution}
           memoryHref={memoryHref}
+          onDismiss={() => {
+            setLastResolution(null);
+            setSupersededSummary(null);
+            forgetDirection(activeProjectId);
+          }}
+        />
+      )}
+
+      {supersededSummary && supersededSummary !== result?.summary && (
+        <RecommendationChange
+          before={supersededSummary}
+          after={result?.summary ?? null}
           regenerating={ask.pending}
           onRegenerate={() => void ask.run()}
         />
@@ -328,7 +358,7 @@ export function AIWorkspace() {
       )}
 
       {/* ── Empty state ─────────────────────────────────────── */}
-      {!result && !ask.pending && ask.error === null && !lastResolution && (
+      {!result && !ask.pending && ask.error === null && !lastResolution && !supersededSummary && (
         <section className="rounded-2xl bg-paper-sunken px-6 py-7 sm:px-8">
           <p className="font-display text-base text-ink">
             Describe what you want help deciding.

@@ -1,82 +1,51 @@
-import { Link } from 'react-router-dom';
-import { scopeLabel } from '../lib/scope';
-import type { ResolveConflictResult } from '../types/api';
-
 /**
- * Why the direction is about to change.
+ * How the preference change affected the direction on screen.
  *
- * Built entirely from the resolution the backend returned — the statements, the
- * scope and the superseded memory are real state. Nothing here is written for a
- * particular scenario.
+ * BEFORE is the summary of the recommendation that was actually displayed when
+ * the change was applied; AFTER is the summary of the regenerated one. Both are
+ * real output — nothing here is written for a particular scenario, and no
+ * regeneration happens until the user asks for it.
  */
 export function RecommendationChange({
-  resolution, memoryHref, onRegenerate, regenerating,
+  before, after, onRegenerate, regenerating,
 }: {
-  resolution: ResolveConflictResult;
-  memoryHref: string;
+  before: string;
+  after: string | null;
   onRegenerate: () => void;
   regenerating: boolean;
 }) {
-  const newMemory = resolution.newMemory;
-  const superseded = resolution.supersededMemory;
-  if (!newMemory) return null;
-
   return (
-    <section
-      aria-live="polite"
-      className="overflow-hidden rounded-2xl border border-approve/25 bg-approve-soft/25"
-    >
-      <div className="px-5 py-4">
-        <p className="eyebrow text-approve">Recommendation updated</p>
-        <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
-          {superseded
-            ? 'A newer client preference changed the direction.'
-            : 'A new client preference was recorded and will shape the next direction.'}
-        </p>
+    <section aria-live="polite" className="rounded-2xl border border-black/[0.08] bg-paper px-5 py-4 shadow-card sm:px-6">
+      <p className="eyebrow">Recommendation updated</p>
+      <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
+        {after
+          ? "Your client's latest decision changed the direction."
+          : "Your client's latest decision affects the direction you had on screen."}
+      </p>
 
-        <dl className="mt-4 space-y-3">
-          {superseded && (
-            <div>
-              <dt className="eyebrow">Previous</dt>
-              <dd className="mt-1 text-sm leading-relaxed text-ink-muted line-through decoration-ink-muted/40">
-                {superseded.statement}
-              </dd>
-            </div>
-          )}
-          <div>
-            <dt className="eyebrow text-approve">Current</dt>
-            <dd className="mt-1 text-[0.9375rem] font-medium leading-relaxed text-ink">
-              {newMemory.statement}
-            </dd>
-            <dd className="mt-1 text-xs text-ink-muted">
-              Applies to: {scopeLabel(newMemory.scope)}
-            </dd>
-          </div>
-        </dl>
-
-        {superseded && (
-          <p className="mt-3 text-xs leading-relaxed text-ink-muted">
-            The previous preference is kept as history —{' '}
-            {superseded.state === 'invalidated' ? 'retired from active use' : 'it still applies elsewhere'}.
-          </p>
-        )}
-
-        {resolution.warnings.map((w, i) => (
-          <p key={i} className="mt-2 text-xs text-caution">{w}</p>
-        ))}
-
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <button type="button" className="btn-primary" onClick={onRegenerate} disabled={regenerating}>
-            {regenerating ? 'Regenerating…' : 'Generate updated direction'}
-          </button>
-          <Link
-            to={memoryHref}
-            className="text-sm font-medium text-accent transition-colors hover:text-accent-ring"
-          >
-            View memory change →
-          </Link>
+      <dl className="mt-4 space-y-3">
+        <div>
+          <dt className="eyebrow">Before</dt>
+          <dd className="mt-1 text-sm leading-relaxed text-ink-muted">{before}</dd>
         </div>
-      </div>
+        {after && (
+          <div>
+            <dt className="eyebrow text-approve">After</dt>
+            <dd className="mt-1 text-[0.9375rem] leading-relaxed text-ink">{after}</dd>
+          </div>
+        )}
+      </dl>
+
+      {!after && (
+        <button
+          type="button"
+          className="btn-primary mt-4 w-full sm:w-auto"
+          onClick={onRegenerate}
+          disabled={regenerating}
+        >
+          {regenerating ? 'Generating…' : 'Generate updated direction →'}
+        </button>
+      )}
     </section>
   );
 }
