@@ -1,183 +1,154 @@
 # ClientOS — Technical Architecture
 
-## 1. Architecture Goal
+> Describes the system as built. See `HINDSIGHT_MEMORY.md` for the memory design and
+> `docs/API.md` for the endpoint contract.
 
-The architecture should keep the application simple while making Hindsight central to the agent's reasoning loop.
+## 1. Shape
 
-## 2. High-Level Architecture
-
-```text
-                    CLIENTOS
-                       │
-             ┌─────────┴─────────┐
-             │                   │
-        Current Request      Hindsight
-             │                   │
-             │          Client Decision Memory
-             │          Preferences
-             │          Rejections
-             │          Constraints
-             │          Outcomes
-             │                   │
-             └─────────┬─────────┘
-                       ↓
-                   AI Agent
-                       │
-             ┌─────────┴─────────┐
-             ↓                   ↓
-       Recommendation        Explanation
-             │
-             ↓
-       User Feedback
-             │
-             ↓
-          Hindsight
+```
+┌───────────────────────────────────────────────────────────┐
+│  React 18 + TypeScript + Vite + Tailwind                  │
+│  Dashboard · Client Workspace · AI Workspace · Timeline    │
+│  Holds NO credentials. Talks only to /api.                │
+└───────────────────────┬───────────────────────────────────┘
+                        │ JSON  { success, data } | { success, error }
+┌───────────────────────▼───────────────────────────────────┐
+│  Express + TypeScript (strict)                            │
+│    routes → controllers → services → repositories         │
+│                    │                                       │
+│    agents/   extract · conflict · classify · recommend ·   │
+│              evidence · (resolve lives in services)       │
+│    hindsight/ retain · recall · reflect · curate ·         │
+│               directives · banks · tags                   │
+│    llm/      ONE Groq client, schema-validated output      │
+└──────┬─────────────────────────────┬──────────────────────┘
+       │                             │
+┌──────▼──────────┐          ┌───────▼─────────────────────┐
+│  PostgreSQL     │          │  Hindsight Cloud            │
+│  metadata only  │          │  THE memory system          │
+│  11 tables      │          │  one bank per client        │
+└─────────────────┘          └─────────────────────────────┘
+                                         │
+                              ┌──────────▼──────────┐
+                              │  Groq (reasoning)   │
+                              └─────────────────────┘
 ```
 
-## 3. Application Layers
+## 2. Layering
 
-### Frontend
+No business logic lives in route files. Routes bind paths to controllers; controllers validate
+and shape HTTP; services own orchestration; repositories own SQL; the `hindsight/` and `llm/`
+modules own every external call. There is exactly one Hindsight client and exactly one Groq
+client in the process.
 
-Responsibilities:
-
-- Client dashboard
-- Client workspace
-- AI conversation
-- Memory timeline
-- Recommendation cards
-- Why/evidence display
-- Preference conflict UI
-
-### Backend
-
-Responsibilities:
-
-- Authentication/session handling if required
-- Client/project APIs
-- Agent orchestration
-- Hindsight calls
-- LLM calls
-- Memory extraction
-- Conflict handling
-- Recommendation generation
-
-### Hindsight
-
-Responsibilities:
-
-- Persistent client experience memory
-- Recall of relevant historical context
-- Long-term memory used by the agent
-
-### Database
-
-Optional application database for structured metadata such as:
-
-- Users
-- Clients
-- Projects
-- Interaction IDs
-- UI state
-- Hindsight reference metadata
-
-The database should not replace Hindsight as the core memory mechanism.
-
-## 4. Agent Flow
-
-```text
-User request
-    ↓
-Identify client/project
-    ↓
-Recall relevant Hindsight memories
-    ↓
-Build reasoning context
-    ↓
-LLM generates recommendation
-    ↓
-Attach evidence / memory references
-    ↓
-Return recommendation
-    ↓
-User approves/corrects
-    ↓
-Retain meaningful outcome in Hindsight
+```
+backend/src/
+├── config/env.ts        zod-validated environment, fails fast, never logs values
+├── controllers/         HTTP shape only
+├── routes/index.ts      path → controller
+├── services/            memory · interactions · conflicts · agent · demo
+├── repositories/        clients · projects · interactions · memory · conflicts ·
+│                        recommendations · directives · users
+├── agents/              extract · conflict · classify · recommend · evidence
+├── hindsight/           client · banks · tags · retain · recall · reflect · curate · directives
+├── llm/                 groq.ts · schemas.ts · prompts/
+├── middleware/          requestContext · validate · asyncHandler · demoToken · errorHandler
+├── db/                  pool · migrate · seed · migrations/
+└── utils/               errors · logger · slug · respond
 ```
 
-## 5. New Interaction Flow
+## 3. What each store holds
 
-```text
-New client feedback
-       ↓
-LLM identifies possible durable memory
-       ↓
-Check for conflicting memory
-       ↓
-If scope is ambiguous → ask user
-       ↓
-If confirmed → retain in Hindsight
+| PostgreSQL | Hindsight |
+|---|---|
+| users, clients, projects | the memories themselves |
+| interactions (raw text + retain status) | preferences, approvals, rejections, constraints, decisions, outcomes |
+| `memory_refs` — **pointers + display cache** | consolidated observations |
+| `memory_links` — supersession graph | tag-scoped directives |
+| `preference_conflicts` — pending decisions | |
+| `recommendations` — audit + evidence snapshot | |
+
+**The rule:** no recommendation reads memory content from PostgreSQL. The agent's only source
+of client history is a live Hindsight recall. `memory_refs` exists because Hindsight has no
+supersession relation and no server-side metadata filtering, and because the timeline must
+render instantly without a network round trip. Every row carries `hindsight_memory_id`;
+Hindsight is authoritative on any disagreement.
+
+## 4. Agent flow
+
+```
+request
+  → resolve client (bank id) + project (tag), assert they are related
+  → hindsight.recall  with compound tag filter (project ∪ client ∪ future), any_strict
+  → classify by type: tag                       [no LLM — mechanical]
+  → Groq synthesis, memory as the ONLY source of client history
+  → bind evidence to recalled memory ids        [no LLM — deterministic]
+      · drop citations not present in the recall result
+      · drop lines asserting history with no citation
+  → persist recommendation + evidence snapshot
 ```
 
-## 6. Main Components
+Steps 3 and 5 are deliberately not LLM steps. That is what makes a fabricated preference
+unable to survive: it cannot cite a real memory id.
 
-Suggested conceptual modules:
+## 5. Write flow
 
-```text
-client/
-project/
-interaction/
-memory/
-agent/
-recommendation/
-conflict/
+```
+feedback
+  → persist interaction (recoverable if later steps fail)
+  → Groq extraction → durability gate
+      · confidence ≥ 0.6
+      · sourceQuote must be a VERBATIM substring of the feedback
+      · not a duplicate of an existing statement
+  → per candidate: targeted recall (world + observation) → Groq contradiction check
+      · conflict, or ambiguous scope → hold as pending, RETAIN NOTHING
+      · clear → hindsight.retain, then reconcile the real memory id
+  → status: retained | awaiting_confirmation | not_durable | failed
 ```
 
-## 7. Error Handling
+Hindsight is written **before** the local pointer row. If memory fails, there is no database
+row implying success. If the pointer write fails afterwards, the response carries a warning
+rather than reporting clean success.
 
-The system should handle:
+## 6. Failure handling
 
-- Hindsight unavailable
-- LLM timeout
-- Invalid LLM response
-- Missing client/project
-- Empty memory recall
-- Conflicting preferences
-- Duplicate interaction submission
+Each dependency fails independently and is reported distinctly.
 
-If Hindsight is temporarily unavailable, the UI should clearly indicate that the memory-aware response could not be completed rather than silently pretending memory was used.
+| Failure | Behaviour |
+|---|---|
+| Hindsight unreachable / rejected | `503 MEMORY_UNAVAILABLE`, **no recommendation returned**, badge turns red |
+| Recall returns nothing | `200` with `memoryUsed: false` and an explicit note — not an error |
+| Retain fails | `retain_status='failed'` + retry endpoint (the SDK never auto-retries writes) |
+| Groq unreachable / bad key | `503 LLM_UNAVAILABLE` |
+| Groq returns invalid JSON | Up to 3 attempts with the validation error fed back, then `503` |
+| Provider rejects its own JSON (`json_validate_failed`) | Treated as a bad generation and retried, not an outage |
+| Model not on the account | `503` naming the model — a config bug, not an outage |
+| PostgreSQL unreachable | `503 DATABASE_UNAVAILABLE` |
+| Duplicate interaction label | `409` |
+| Concurrent conflict resolution | Atomic claim; exactly one write, loser gets `409` |
 
-## 8. Security
+The governing rule: **never claim memory was used when it was not.** The health badge uses an
+authenticated Hindsight call, because an unauthenticated ping reports success with an invalid
+key — which would be precisely the false reassurance this rule forbids.
 
-Do not expose API keys in the frontend.
+## 7. Security
 
-Use server-side environment variables.
+- Credentials are backend-only. The frontend's sole variable is `VITE_API_BASE_URL`.
+- `.env` is gitignored; `render.yaml` marks secrets `sync: false`.
+- All SQL uses bound parameters; identifiers are pattern-validated before any lookup.
+- Bodies capped at 256 kB; feedback at 5000 chars; agent messages at 1000.
+- Logs redact key-named fields *and* key-shaped values at any depth, and truncate long strings.
+- Errors expose no stack traces, SQL, or internals.
+- React escapes all rendered text; `dangerouslySetInnerHTML` is used nowhere.
+- Prompts instruct the model to treat memory and request text as data, never instructions.
+- Cross-client access is blocked by resolving both ids and asserting the relationship.
 
-Avoid exposing unnecessary client information in logs.
+## 8. Deployment
 
-Use appropriate authentication if the deployed MVP handles real user data.
-
-For the hackathon demo, use synthetic client data unless permission exists to use real client information.
-
-## 9. Deployment
-
-A simple deployment can use:
-
-```text
-Frontend
-   ↓
-Hosted web application
-
-Backend
-   ↓
-Hosted API
-
-Hindsight
-   ↓
-Hindsight Cloud / self-hosted instance
-
-LLM
-   ↓
-Configured provider
-```
-
-Exact providers should be selected during implementation.
+| Piece | Target | Config |
+|---|---|---|
+| Frontend | Vercel | `vercel.json` — SPA rewrites, security headers |
+| Backend | Render | `render.yaml` — migrations on start, `/api/health` check |
+| Database | Render PostgreSQL | `DATABASE_URL` injected from the blueprint |
+| Memory | Hindsight Cloud | bank-scoped key preferred |
+| Reasoning | Groq | `openai/gpt-oss-120b` |

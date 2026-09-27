@@ -1,188 +1,116 @@
 # ClientOS — Demo Dataset
 
+All data is **synthetic**. No real client information is used.
+
+Seeded by `npm run db:seed`. Seeding writes through the same Hindsight retain path the live
+application uses, so seeded memory is real memory — not a fixture.
+
 ## Client
 
-**Vive Studio**
+**Vive Studio** (`vive-studio`) — design studio repositioning upmarket.
+Hindsight bank: `client-vive-studio`
 
 ## Project
 
-**Premium Website Redesign**
+**Premium Website Redesign** (`premium-website-redesign`)
 
-## Interaction Timeline
+## Interactions
 
-### Meeting #1
+Interactions 1–7 are seeded as history. **Revision #6 is deliberately NOT seeded** — it is
+submitted live during the demo so conflict detection genuinely runs.
 
-Client:
+| # | Label | Source | What the client said | Memory produced |
+|---|---|---|---|---|
+| 1 | Meeting #1 | meeting | "Premium positioning is important for the brand." | preference — premium positioning |
+| 2 | Design Review #1 | design-review | "Keep the colour palette restrained and muted — avoid bright, saturated colours." | preference — restrained, muted palette · **rejection — avoid bright, saturated colours** |
+| 3 | Design Review #2 | design-review | "Serif typography feels premium. Approved." | approval — serif typography |
+| 4 | Revision #2 | revision | "The blue-heavy version doesn't feel right." | rejection — blue-heavy direction |
+| 5 | Revision #3 | revision | "The animations feel too heavy. Keep motion restrained." | rejection — heavy animation · preference — restrained motion |
+| 6 | Revision #4 | revision | "Headlines should be shorter." | preference — shorter headlines |
+| 7 | Revision #5 | revision | "Customer proof should appear above the fold." | approval — customer proof above the fold |
+| — | **Revision #6** | revision | **"We're now open to brighter accent colours."** | **submitted live → triggers the conflict** |
 
-> We want the website to feel premium and minimal.
+Total seeded: 7 interactions, 9 memories for Vive Studio.
 
-Memory:
+> Design Review #1 carries the colour restriction deliberately. It is what Revision #6
+> contradicts — without it the conflict would have nothing to detect, and the demo's
+> centrepiece would not run.
 
-```text
-Preference:
-Premium positioning
+Hindsight additionally consolidates these raw facts into **observations** of its own, so the
+bank typically holds more units than we retained. Those are derived memory, not duplicates.
 
-Preference:
-Minimal visual style
+## Second client — isolation proof
+
+**Northwind Labs** (`northwind-labs`), project **Marketing Site**, bank `client-northwind-labs`.
+
+| Label | What the client said |
+|---|---|
+| Kickoff #1 | "We want bold, saturated colours and playful motion throughout the site." |
+
+Asking Northwind the *same* question returns the *opposite* direction — bold and saturated —
+because its memory lives in a separate Hindsight bank. This makes isolation demonstrable rather
+than merely asserted.
+
+## The demo request
+
+> **Create the next homepage direction.**
+
+## Observed results
+
+### Without memory (`useMemory: false`)
+
+> "Develop a premium homepage concept that emphasizes clear brand messaging, strong visual
+> hierarchy, and seamless usability…"
+
+0 citations. `memoryUsed: false`. Notes state that no relevant client history was found.
+
+### With memory, before the conflict
+
+9 memories recalled, 10 citations.
+
+> "Design a premium homepage that feels elegant and refined, using muted colours, serif
+> typography, and concise messaging while showcasing customer proof above the fold."
+
+**Avoid:** heavy animation · bright, saturated colour treatments · blue-heavy direction
+
+### After confirming the change at "This project" scope
+
+10 memories recalled.
+
+> "Use a muted, restrained colour palette with brighter accent colours for highlights"
+
+**Avoid:** heavy animation · blue-heavy direction · **bright, saturated colours *as primary
+palette***
+
+The distinction is the point: brighter *accents* are now permitted, while the underlying
+preference for restraint survives. Neither statement was hardcoded — both came out of recall
+plus reasoning.
+
+## Why examples
+
+All assembled from the memory's own text plus its source interaction — never generated.
+
+| Question | Answer |
+|---|---|
+| Why restrained animation? | "The client rejected heavy animation." (Revision #3) |
+| Why serif typography? | "The client approved serif typography." (Design Review #2) |
+| Why short headlines? | "The client wants shorter headlines." (Revision #4) |
+| Why customer proof high up? | "The client approved placing customer proof above the fold." (Revision #5) |
+| Why brighter accents now? | "The client is now open to brighter accent colours." (Revision #6, project scope) |
+
+## Stages
+
+| Stage | Contents |
+|---|---|
+| `empty` | Client and project only — no history |
+| `history` | Interactions 1–7 (default) |
+| `post_conflict` | 1–7 plus the resolved project-scoped preference change |
+
+```bash
+npm run db:seed -- empty
+npm run db:seed                   # history
+npm run db:seed -- post_conflict
 ```
 
----
-
-### Design Review #1
-
-Client:
-
-> Keep the layouts clean and avoid unnecessary visual elements.
-
-Memory:
-
-```text
-Preference:
-Clean layouts
-```
-
----
-
-### Design Review #2
-
-Client:
-
-> The serif heading direction works well. Let's keep it.
-
-Memory:
-
-```text
-Approval:
-Serif typography
-```
-
----
-
-### Revision #2
-
-Client:
-
-> The blue-heavy version doesn't feel right.
-
-Memory:
-
-```text
-Rejection:
-Blue-heavy visual direction
-```
-
----
-
-### Revision #3
-
-Client:
-
-> The animations are too much. Keep movement subtle.
-
-Memory:
-
-```text
-Rejection:
-Heavy animation
-
-Preference:
-Restrained animation
-```
-
----
-
-### Revision #4
-
-Client:
-
-> Keep the headlines shorter.
-
-Memory:
-
-```text
-Preference:
-Short headlines
-```
-
----
-
-### Revision #5
-
-Client:
-
-> Put customer proof closer to the top of the page.
-
-Memory:
-
-```text
-Approval:
-Customer proof above the fold
-```
-
----
-
-### Revision #6
-
-Client:
-
-> We're now open to brighter accent colors.
-
-Potential conflict:
-
-```text
-Old:
-Avoid bright colors
-
-New:
-Brighter accent colors are acceptable
-```
-
-Expected behavior:
-
-ClientOS asks whether the new preference applies to:
-
-- This project
-- All future projects
-- This design direction
-
-For the demo, select:
-
-**This project**
-
-## Main Demo Prompt
-
-> Create the next homepage direction for this client.
-
-## Expected Memory-Aware Recommendation
-
-```text
-Premium and minimal visual language
-Serif typography
-Short headline
-Customer proof near the top
-Restrained animation
-Avoid blue-heavy visual direction
-Use brighter accents for this project
-```
-
-## Why Examples
-
-### Why serif typography?
-
-The client approved serif typography during Design Review #2.
-
-### Why restrained animation?
-
-Heavy animation was rejected during Revision #3.
-
-### Why short headlines?
-
-The client explicitly requested shorter headlines during Revision #4.
-
-### Why customer proof near the top?
-
-The client approved this placement during Revision #5.
-
-### Why brighter accents?
-
-The client later confirmed that brighter accent colors are acceptable for this project.
+Reset deletes and recreates the Hindsight banks first, so the demo can be run repeatedly
+without accumulating duplicate memory.

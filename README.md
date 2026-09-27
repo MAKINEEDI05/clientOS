@@ -1,120 +1,181 @@
 # ClientOS — Client Decision Memory Agent
 
-> **Remember why your clients decide.**
+> **AI that remembers why your clients decide.**
 
-ClientOS is an AI agent that remembers client preferences, approvals, rejections, revision feedback, and changing requirements, then uses that history to make future client work more accurate.
+ClientOS remembers client preferences, approvals, rejections, constraints and changing
+requirements, then uses that persistent experience to make the next recommendation more accurate.
 
-## The Core Idea
+Memory lives in **Hindsight**. Reasoning runs on **Groq**. PostgreSQL holds application
+metadata only — it is never a substitute for the memory layer.
 
-A normal AI responds to the current request.
+---
 
-ClientOS responds using:
+## The core idea
 
-**Current request + relevant client history + previous outcomes**
+A normal AI answers the current request. ClientOS answers using
 
-The central experience is:
+**current request + recalled client history + the evidence for it**
 
-> **Old decision → new request → recalled memory → better recommendation**
-
-## Problem
-
-Client-facing teams repeatedly lose the reasoning behind decisions. Feedback is scattered across meetings, chats, emails, and revisions. As work continues, teams can repeat rejected ideas or forget why an approach was approved.
-
-## Solution
-
-ClientOS creates persistent client decision memory using Hindsight.
-
-It remembers:
-
-- Preferences
-- Approvals
-- Rejections
-- Constraints
-- Revision feedback
-- Decision history
-- Preference changes
-- Outcomes
-
-It then recalls relevant memories when generating the next recommendation.
-
-## Example
-
-A client previously rejected:
-
-- Blue-heavy visual direction
-- Heavy animations
-- Long headlines
-
-Later, a designer asks:
-
-> "Create the next homepage direction."
-
-ClientOS recalls the previous decisions and recommends a minimal premium direction while avoiding the rejected approaches.
-
-It can also explain:
-
-> "I avoided heavy animation because it was rejected during Revision #2."
-
-## Core Hindsight Loop
-
-```text
-Client Interaction
-       ↓
-Extract meaningful decision
-       ↓
-Hindsight memory
-       ↓
-Recall relevant history
-       ↓
-AI recommendation
-       ↓
-Client feedback / outcome
-       ↓
-Updated Hindsight memory
+```
+Client feedback
+      ↓  extract only durable decisions
+Hindsight Retain
+      ↓
+Hindsight Recall  ──►  Groq reasoning  ──►  Recommendation + Why/evidence
+      ↓                                            ↓
+      └──────────── outcome / new feedback ────────┘
 ```
 
-## MVP
+The proof is behavioural: the same question produces a different answer once the client's
+history exists, and changes again when a preference is confirmed as changed.
 
-1. Client dashboard
-2. Client workspace
-3. Interaction/feedback input
-4. AI agent
-5. Hindsight memory
-6. Memory timeline
-7. "Why?" explanation
-8. Preference-conflict detection
+---
+
+## Quick start
+
+```bash
+# 1. Install
+npm install
+
+# 2. Start PostgreSQL (Docker)
+npm run db:up
+
+# 3. Configure credentials
+cp .env.example backend/.env
+#    then edit backend/.env and set:
+#      HINDSIGHT_API_KEY   (from Hindsight Cloud → Organization → API Keys, starts with hsk_)
+#      GROQ_API_KEY        (from console.groq.com)
+
+# 4. Create the schema
+npm run db:migrate
+
+# 5. Prove the memory loop works end to end (recommended before anything else)
+npm run verify:memory
+
+# 6. Seed the demo client
+npm run db:seed
+
+# 7. Run both apps
+npm run dev
+#    frontend → http://localhost:5173
+#    backend  → http://localhost:5000
+```
+
+`npm run verify:memory` makes live Hindsight and Groq calls and checks retain → recall →
+reason → evidence, plus tag scoping and memory invalidation. It uses a throwaway bank and
+deletes it afterwards. If it fails, fix that before using the app — the product has no
+meaning without it.
+
+### Commands
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Frontend and backend together |
+| `npm run build` | Type-check and build both |
+| `npm test` | Backend (74) + frontend (29) tests |
+| `npm run db:up` / `db:down` | Start/stop the PostgreSQL container |
+| `npm run db:migrate` | Apply SQL migrations |
+| `npm run db:seed` | Seed the demo client (needs Hindsight — writes real memory) |
+| `npm run db:seed -- empty` | Seed with no history (demo Scene 1) |
+| `npm run verify:memory` | Live end-to-end check of the memory loop |
+| `npm run typecheck` | Strict TypeScript across both workspaces |
+
+---
+
+## What it does
+
+### 1. Extracts only durable decisions
+
+Feedback goes through an extraction pass that keeps preferences, approvals, rejections,
+decisions, constraints, outcomes and confirmed changes — and discards greetings, logistics
+and vague remarks.
+
+> "Make it better." → **nothing retained.** The UI shows it was discarded, with the reason.
+
+Every candidate must quote the source text verbatim; a candidate whose quote is not literally
+present is dropped. That is the primary defence against invented preferences.
+
+### 2. Recalls with real scope isolation
+
+One **Hindsight bank per client**, with project/scope/type/source carried as tags. Recall uses
+compound tag filters with `any_strict` matching, so one project's memory cannot leak into
+another, and one client's bank is invisible to another.
+
+### 3. Grounds every claim in real memory
+
+Each recommendation line carries the memory ids it came from. The backend **drops any citation
+that does not correspond to a memory actually returned by recall**, and drops any line that
+asserts client history while citing nothing. The "Why?" text is assembled from the memory's own
+words and its source interaction — it is not generated.
+
+### 4. Handles changed preferences without erasing history
+
+When new feedback contradicts an existing memory, ClientOS stops, shows both statements, and
+asks how widely the change applies. Nothing is written to memory until a human confirms.
+
+| Chosen scope | What happens in Hindsight |
+|---|---|
+| Temporary exception | New memory at interaction scope. Old memory untouched. |
+| This project | New memory + a **project-tagged directive**. Old memory stays valid — it still applies to the client's other work — and is marked superseded here. |
+| All future projects | New memory at client scope + a client-tagged directive. Old memory is **invalidated** — removed from recall, but auditable and restorable. |
+
+Nothing is ever deleted. The timeline shows the old preference struck through with its
+replacement linked.
+
+### 5. Tells the truth when it cannot remember
+
+If Hindsight is unreachable, the request **fails** with `MEMORY_UNAVAILABLE` rather than
+quietly answering without history. The header badge shows live memory status, verified with an
+authenticated call.
+
+---
+
+## Screens
+
+| Screen | Route | Purpose |
+|---|---|---|
+| Dashboard | `/` | Clients with decision counts and open confirmations |
+| Client Workspace | `/clients/:id` | Record feedback; see current preferences, approvals, rejections |
+| AI Workspace | `/clients/:id/ai` | Ask ClientOS; recommendation → Why → evidence; resolve conflicts |
+| Memory Timeline | `/clients/:id/memory` | How the client's decisions evolved, superseded entries included |
+
+---
+
+## Architecture
+
+```
+React + TypeScript + Vite + Tailwind        (frontend — holds no credentials)
+        │  /api
+Express + TypeScript                        (backend)
+        ├── controllers → services → repositories → PostgreSQL   (metadata)
+        ├── agents/  extraction · conflict · recommendation · evidence
+        ├── hindsight/  retain · recall · reflect · curate · directives
+        └── llm/  one Groq client, schema-validated output
+```
+
+**PostgreSQL** stores users, clients, projects, interactions, memory pointers, conflicts and
+recommendation audit. **Hindsight** stores the memory itself. No recommendation ever reads
+memory content from PostgreSQL.
+
+See [ARCHITECTURE.md](ARCHITECTURE.md), [HINDSIGHT_MEMORY.md](HINDSIGHT_MEMORY.md) and
+[docs/API.md](docs/API.md).
+
+---
+
+## Demo
+
+One synthetic client — **Vive Studio**, *Premium Website Redesign* — with eight interactions.
+A second client, Northwind Labs, exists to demonstrate isolation: it wants bold saturated
+colour, and asking it the same question returns the opposite direction.
+
+Walkthrough in [DEMO_SCRIPT.md](DEMO_SCRIPT.md). Demo data is synthetic; no real client
+information is used.
+
+---
 
 ## Documentation
 
-- [Project Overview](PROJECT_OVERVIEW.md)
-- [Hindsight Memory](HINDSIGHT_MEMORY.md)
-- [Architecture](ARCHITECTURE.md)
-- [Demo Script](DEMO_SCRIPT.md)
-- [Setup](SETUP.md)
-- [Product Decisions](docs/PRODUCT_DECISIONS.md)
-- [API](docs/API.md)
-- [Demo Data](docs/DEMO_DATA.md)
-
-## Tech Stack
-
-The implementation should use a web frontend, backend agent service, LLM provider, Hindsight for persistent memory, and an optional database for application metadata.
-
-Exact technologies can be selected during implementation.
-
-## Hackathon Focus
-
-ClientOS is intentionally narrow. It focuses on one persona and one workflow: **client-facing teams managing website/design revisions**.
-
-The most important feature is not chat. It is the fact that memory changes the agent's future behavior.
-
-## Demo Goal
-
-The judge should understand three states:
-
-1. Generic recommendation without client history.
-2. Personalized recommendation after Hindsight recall.
-3. Changed recommendation after a new client preference is learned.
-
-## Status
-
-Hackathon MVP — ClientOS.
+- [Setup](SETUP.md) · [Architecture](ARCHITECTURE.md) · [Hindsight memory design](HINDSIGHT_MEMORY.md)
+- [API reference](docs/API.md) · [Demo data](docs/DEMO_DATA.md) · [Demo script](DEMO_SCRIPT.md)
+- [Edge case results](Edge_Case_Checklist.md) · [Product decisions](docs/PRODUCT_DECISIONS.md)
+- [Hackathon spec](HACKATHON_MASTER_SPEC.md)
