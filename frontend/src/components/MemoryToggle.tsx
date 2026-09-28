@@ -1,21 +1,28 @@
+import type { MemoryAvailability } from '../hooks/useMemoryHealth';
+
 /**
  * Client-memory switch.
  *
  * States what will actually happen in each position. When off, the copy is
  * explicit that no previous decisions are used — the UI never implies otherwise.
+ *
+ * While availability is still being checked the switch is disabled and says so,
+ * rather than presenting itself as unavailable. Disabling it is what stops a
+ * request being sent against memory whose reachability is not yet known.
  */
 export function MemoryToggle({
-  enabled, onChange, clientName, memoryCount, disabled, memoryConnected,
+  enabled, onChange, clientName, memoryCount, disabled, memoryAvailability,
 }: {
   enabled: boolean;
   onChange: (next: boolean) => void;
   clientName: string;
   memoryCount: number;
   disabled?: boolean;
-  memoryConnected: boolean;
+  memoryAvailability: MemoryAvailability;
 }) {
-  const unavailable = !memoryConnected;
-  const on = enabled && !unavailable;
+  const checking = memoryAvailability === 'checking';
+  const unavailable = memoryAvailability === 'unavailable';
+  const on = enabled && !unavailable && !checking;
 
   return (
     <label
@@ -25,13 +32,13 @@ export function MemoryToggle({
           : on
             ? 'bg-approve-soft/50'
             : 'bg-paper-sunken'
-      } ${disabled || unavailable ? 'cursor-not-allowed' : ''}`}
+      } ${disabled || unavailable || checking ? 'cursor-not-allowed' : ''}`}
     >
       <input
         type="checkbox"
         checked={enabled}
         onChange={(e) => onChange(e.target.checked)}
-        disabled={disabled || unavailable}
+        disabled={disabled || unavailable || checking}
         className="sr-only"
       />
 
@@ -40,7 +47,7 @@ export function MemoryToggle({
         aria-hidden="true"
         className={`mt-0.5 flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors ${
           on ? 'bg-approve' : unavailable ? 'bg-reject/40' : 'bg-ink-muted/30'
-        }`}
+        } ${checking ? 'animate-pulse' : ''}`}
       >
         <span
           className={`h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
@@ -54,20 +61,22 @@ export function MemoryToggle({
           <span className="text-sm font-semibold text-ink">
             Client memory{' '}
             <span className={unavailable ? 'text-reject' : on ? 'text-approve' : 'text-ink-muted'}>
-              {unavailable ? 'unavailable' : on ? 'ON' : 'OFF'}
+              {checking ? 'checking…' : unavailable ? 'unavailable' : on ? 'ON' : 'OFF'}
             </span>
           </span>
         </span>
 
         <span className="mt-0.5 block text-sm leading-relaxed text-ink-soft">
-          {unavailable
-            ? "This client’s memory cannot be reached, so previous decisions cannot be used."
-            : on
-              ? `Recall ${clientName}’s previous decisions from Hindsight and ground this direction in them.`
-              : 'Generate without previous client decisions.'}
+          {checking
+            ? 'Checking whether this client’s memory can be reached…'
+            : unavailable
+              ? "This client’s memory cannot be reached, so previous decisions cannot be used."
+              : on
+                ? `Recall ${clientName}’s previous decisions from Hindsight and ground this direction in them.`
+                : 'Generate without previous client decisions.'}
         </span>
 
-        {!unavailable && (
+        {!unavailable && !checking && (
           <span className="mt-1 block text-xs tabular-nums text-ink-muted">
             {on
               ? `${memoryCount} memor${memoryCount === 1 ? 'y' : 'ies'} available to this project`

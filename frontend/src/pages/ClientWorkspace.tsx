@@ -19,7 +19,7 @@ export function ClientWorkspace() {
   const { clientId = '' } = useParams();
   const [lastResult, setLastResult] = useState<SubmitInteractionResult | null>(null);
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
-  const { status: health } = useMemoryHealth();
+  const { availability: memoryAvailability } = useMemoryHealth();
 
   const clientState = useAsync((s) => clients.get(clientId, s), [clientId]);
   const { activeProject, activeProjectId, setActiveProject } = useActiveProject(
@@ -113,7 +113,7 @@ export function ClientWorkspace() {
               memoryCount={projectState.data?.memoryCount ?? activeProject.memoryCount}
               relevant={projectState.data ? relevant : undefined}
               interactionCount={activeProject.interactionCount}
-              memoryConnected={health?.connected ?? false}
+              memoryAvailability={memoryAvailability}
               bankId={client.hindsightBankId}
             />
           )}

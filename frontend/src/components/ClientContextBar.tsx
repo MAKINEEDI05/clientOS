@@ -1,4 +1,5 @@
 import type { RelevantMemory } from '../lib/memoryCounts';
+import type { MemoryAvailability } from '../hooks/useMemoryHealth';
 
 /**
  * Compact client/project identity, and THE memory status for the screen.
@@ -18,7 +19,7 @@ import type { RelevantMemory } from '../lib/memoryCounts';
  */
 export function ClientContextBar({
   clientName, projectName, projectControl, memoryCount, relevant,
-  interactionCount, memoryConnected, memoryEnabled = true, bankId,
+  interactionCount, memoryAvailability, memoryEnabled = true, bankId,
 }: {
   clientName: string;
   projectName?: string | null;
@@ -28,8 +29,11 @@ export function ClientContextBar({
   /** Breakdown of the count into project and client-wide memory, when known. */
   relevant?: RelevantMemory;
   interactionCount?: number;
-  /** Whether this client's memory can be reached at all. */
-  memoryConnected: boolean;
+  /**
+   * Whether this client's memory can be reached. Three-valued on purpose:
+   * "checking" must not be reported as an outage.
+   */
+  memoryAvailability: MemoryAvailability;
   /** Whether the user has memory switched on for the current request. */
   memoryEnabled?: boolean;
   /**
@@ -39,9 +43,17 @@ export function ClientContextBar({
    */
   bankId?: string | null;
 }) {
-  // Reachable but switched off is a third state. Showing "active" there would
-  // contradict the toggle and imply history is in play when it is not.
-  const state = !memoryConnected ? 'unavailable' : memoryEnabled ? 'active' : 'off';
+  // Four display states. "Reachable but switched off" is distinct from "active"
+  // — claiming active there would contradict the switch. And "still checking" is
+  // distinct from "unavailable", which is the whole point of three-valued input.
+  const state =
+    memoryAvailability === 'checking'
+      ? 'checking'
+      : memoryAvailability === 'unavailable'
+        ? 'unavailable'
+        : memoryEnabled
+          ? 'active'
+          : 'off';
   return (
     <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 border-b border-black/[0.08] pb-4">
       <div className="min-w-0">
@@ -58,20 +70,32 @@ export function ClientContextBar({
       <div className="flex flex-col gap-1 sm:items-end">
         <span
           className={`inline-flex items-center gap-1.5 text-sm font-medium ${
-            state === 'active' ? 'text-approve' : state === 'off' ? 'text-ink-muted' : 'text-reject'
+            state === 'active'
+              ? 'text-approve'
+              : state === 'unavailable'
+                ? 'text-reject'
+                : 'text-ink-muted'
           }`}
         >
           <span
             aria-hidden="true"
             className={`h-1.5 w-1.5 rounded-full ${
-              state === 'active' ? 'bg-approve' : state === 'off' ? 'bg-ink-muted/50' : 'bg-reject'
+              state === 'active'
+                ? 'bg-approve'
+                : state === 'unavailable'
+                  ? 'bg-reject'
+                  : state === 'checking'
+                    ? 'animate-pulse bg-ink-muted/60'
+                    : 'bg-ink-muted/50'
             }`}
           />
-          {state === 'active'
-            ? `Using ${clientName}'s Hindsight memory`
-            : state === 'off'
-              ? 'Client memory is off for this request'
-              : 'Client memory is temporarily unavailable'}
+          {state === 'checking'
+            ? 'Checking client memory…'
+            : state === 'active'
+              ? `Using ${clientName}'s Hindsight memory`
+              : state === 'off'
+                ? 'Client memory is off for this request'
+                : 'Client memory is temporarily unavailable'}
         </span>
         <span className="text-xs tabular-nums text-ink-muted">
           {memoryCount} memor{memoryCount === 1 ? 'y' : 'ies'} available to this project

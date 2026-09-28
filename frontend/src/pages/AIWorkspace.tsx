@@ -45,7 +45,7 @@ export function AIWorkspace() {
   // Kept so the before/after comparison uses real output, not a re-description.
   const [supersededSummary, setSupersededSummary] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
-  const { status: health } = useMemoryHealth();
+  const { availability: memoryAvailability } = useMemoryHealth();
 
   const clientState = useAsync((s) => clients.get(clientId, s), [clientId]);
   const { activeProject, activeProjectId, setActiveProject } = useActiveProject(
@@ -140,7 +140,6 @@ export function AIWorkspace() {
   // client-wide ones. Derived from the returned memories, not assumed.
   const relevant = splitRelevant(flattenProjectMemory(projectState.data?.memory));
   const interactionCount = activeProject?.interactionCount ?? 0;
-  const memoryConnected = health?.connected ?? false;
   const memoryHref = `/clients/${clientId}/memory${activeProject ? `?project=${activeProject.slug}` : ''}`;
   const canGenerate = Boolean(request.trim()) && Boolean(activeProjectId) && !ask.pending;
 
@@ -169,7 +168,7 @@ export function AIWorkspace() {
         memoryCount={memoryCount}
         relevant={relevant}
         interactionCount={interactionCount}
-        memoryConnected={memoryConnected}
+        memoryAvailability={memoryAvailability}
         memoryEnabled={useMemory}
         bankId={client.hindsightBankId}
       />
@@ -264,7 +263,7 @@ export function AIWorkspace() {
               clientName={client.name}
               memoryCount={memoryCount}
               disabled={ask.pending}
-              memoryConnected={memoryConnected}
+              memoryAvailability={memoryAvailability}
             />
           </div>
 

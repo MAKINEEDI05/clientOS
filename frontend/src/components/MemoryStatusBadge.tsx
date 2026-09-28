@@ -3,29 +3,32 @@ import { useMemoryHealth } from '../hooks/useMemoryHealth';
 /**
  * Live memory-connection indicator, always visible in the top bar.
  *
- * If Hindsight is not connected, every screen says so. This is what makes it
+ * If Hindsight is not reachable, every screen says so. This is what makes it
  * impossible for the app to imply memory worked when it did not.
+ *
+ * Driven by the same three-state availability the page uses, so the header can
+ * never contradict the memory status shown below it — and, like the page, it does
+ * not report an outage while the probe is still running.
  */
 export function MemoryStatusBadge() {
-  const { status, checking, unreachable } = useMemoryHealth();
+  const { status, availability, unreachable } = useMemoryHealth();
 
-  if (checking && !status) {
+  if (availability === 'checking') {
     return <Pill tone="neutral" label="Checking memory…" />;
   }
-  if (unreachable) {
-    return <Pill tone="bad" label="Backend unreachable" title="The ClientOS API is not responding." />;
+  if (availability === 'unavailable') {
+    return unreachable
+      ? <Pill tone="bad" label="Backend unreachable" title="The ClientOS API is not responding." />
+      : (
+        <Pill
+          tone="bad"
+          label="Memory disconnected"
+          title={`Hindsight: ${status?.reason ?? 'not connected'}. Recommendations that need history will be refused.`}
+        />
+      );
   }
   if (!status) {
     return <Pill tone="neutral" label="Memory status unknown" />;
-  }
-  if (!status.connected) {
-    return (
-      <Pill
-        tone="bad"
-        label="Memory disconnected"
-        title={`Hindsight: ${status.reason ?? 'not connected'}. Recommendations that need history will be refused.`}
-      />
-    );
   }
   return (
     <Pill
