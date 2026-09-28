@@ -6,7 +6,9 @@ services:
     runtime: node
     plan: free
     rootDir: .
-    buildCommand: npm install && npm run build --workspace backend
+    # NODE_ENV=production makes npm skip devDependencies, but the build needs
+    # `typescript` and the start command's migration step needs `tsx`.
+    buildCommand: npm install --include=dev && npm run build --workspace backend
     startCommand: npm run db:migrate --workspace backend && npm run start --workspace backend
     healthCheckPath: /api/health
     envVars:
