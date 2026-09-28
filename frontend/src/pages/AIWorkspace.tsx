@@ -16,6 +16,8 @@ import { ClientContextBar } from '../components/ClientContextBar';
 import { ProjectContextSelector } from '../components/ProjectContextSelector';
 import { EmptyState, ErrorState } from '../components/States';
 import { forgetDirection, recallDirection, rememberDirection } from '../lib/lastDirection';
+import { MemoryComparison } from '../components/MemoryComparison';
+import { recallMemoryOff, rememberMemoryOff } from '../lib/memoryComparison';
 import { flattenProjectMemory, splitRelevant } from '../lib/memoryCounts';
 import type { ConflictScope, Recommendation, ResolveConflictResult } from '../types/api';
 
@@ -70,14 +72,39 @@ export function AIWorkspace() {
     { enabled: Boolean(activeProjectId) },
   );
 
+  // The real memory-off answer to THIS request, looked up when a memory-backed
+  // answer arrives. Held in state so the rendered comparison cannot drift as the
+  // request box is edited afterwards.
+  const [comparisonBaseline, setComparisonBaseline] = useState<string | null>(null);
+
   const ask = useMutation(async () => {
     setFeedbackDone(false);
+    const clientDbId = clientState.data!.client.id;
+    const asked = request.trim();
+
+    // A throw here propagates out of useMutation.run, so nothing below runs on a
+    // failed generation: a failed answer is never stored and never compared.
     const response = await agent.recommend({
-      clientId: clientState.data!.client.id,
+      clientId: clientDbId,
       projectId: activeProjectId,
-      message: request.trim(),
+      message: asked,
       useMemory,
     });
+
+    if (useMemory) {
+      // Only pair it with a baseline if memory genuinely informed this answer.
+      // Memory on but nothing recalled is not a "with memory" difference.
+      setComparisonBaseline(
+        response.memoryUsed
+          ? recallMemoryOff(clientDbId, activeProjectId, asked)?.summary ?? null
+          : null,
+      );
+    } else {
+      // This IS the baseline for the next memory-backed run of the same request.
+      rememberMemoryOff(clientDbId, activeProjectId, asked, response.summary, response.recommendationId);
+      setComparisonBaseline(null);
+    }
+
     setResult(response);
     rememberDirection(activeProjectId, response.summary);
     return response;
@@ -91,6 +118,7 @@ export function AIWorkspace() {
     setFeedbackDone(false);
     setLastResolution(null);
     setSupersededSummary(null);
+    setComparisonBaseline(null);
     resetAsk();
   }, [activeProjectId, resetAsk]);
 
@@ -116,6 +144,7 @@ export function AIWorkspace() {
         res.newMemory ? (result?.summary ?? recallDirection(activeProjectId)) : null,
       );
       setResult(null);
+      setComparisonBaseline(null);
       setLastResolution(res);
       return res;
     },
@@ -288,6 +317,17 @@ export function AIWorkspace() {
       {/* ── Result ──────────────────────────────────────────── */}
       {result && !ask.pending && (
         <div className="space-y-8">
+          {/* 0 — Why this answer differs, using both real generations. Rendered
+                 only when a genuine memory-off baseline exists for this exact
+                 client, project and request. */}
+          {comparisonBaseline && result.memoryUsed && (
+            <MemoryComparison
+              without={comparisonBaseline}
+              with_={result.summary}
+              memoryCount={result.memoryCount}
+            />
+          )}
+
           {/* 1 — RECOMMENDATION: the dominant element on the page. */}
           <section aria-labelledby="recommendation-heading">
             <div className="flex flex-wrap items-center justify-between gap-2">

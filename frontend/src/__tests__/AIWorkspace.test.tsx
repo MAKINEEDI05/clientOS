@@ -7,7 +7,7 @@ vi.mock('../services/clientos', () => import('../test/serviceMock'));
 import { AIWorkspace } from '../pages/AIWorkspace';
 import { renderRoute } from '../test/renderRoute';
 import { agent, resetServiceMock } from '../test/serviceMock';
-import { MOBILE, WEBSITE } from '../test/fixtures';
+import { CLIENT, MOBILE, WEBSITE } from '../test/fixtures';
 
 const ROUTE = '/clients/:clientId/ai';
 
@@ -185,5 +185,232 @@ describe('AIWorkspace — memory off', () => {
     expect(agent.recommend).toHaveBeenCalledWith(
       expect.objectContaining({ projectId: MOBILE.id, useMemory: false }),
     );
+  });
+});
+
+/**
+ * The memory OFF → ON comparison.
+ *
+ * Both sides must be generations that actually happened, for the same client,
+ * project and request. Every refusal below matters as much as the match: an
+ * unrelated comparison would be a fabricated claim about what memory did.
+ */
+describe('AIWorkspace — memory off vs on comparison', () => {
+  beforeEach(() => {
+    resetServiceMock();
+    sessionStorage.clear();
+  });
+
+  const HEADING = /memory changes the direction/i;
+  const GENERIC = /A generic direction with no client history\./;
+  const GROUNDED_WEB = /Grounded direction for the website\./;
+
+  /** Generate once at the current memory setting. */
+  async function generate(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole('button', { name: /generate direction/i }));
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Recommendation' })).toBeInTheDocument());
+  }
+  const toggleMemory = (user: ReturnType<typeof userEvent.setup>) =>
+    user.click(screen.getByRole('checkbox', { name: /client memory/i }));
+
+  test('no comparison on a memory-off generation — there is nothing to compare yet', async () => {
+    const user = userEvent.setup();
+    open();
+    await screen.findAllByText(/10 memories available to this project/);
+
+    await toggleMemory(user);
+    await generate(user);
+
+    expect(await screen.findByText(GENERIC)).toBeInTheDocument();
+    expect(screen.queryByText(HEADING)).not.toBeInTheDocument();
+  });
+
+  test('no comparison on a memory-on generation with no prior memory-off answer', async () => {
+    const user = userEvent.setup();
+    open();
+    await screen.findAllByText(/10 memories available to this project/);
+
+    await generate(user);
+
+    expect(await screen.findByText(GROUNDED_WEB)).toBeInTheDocument();
+    expect(screen.queryByText(HEADING)).not.toBeInTheDocument();
+  });
+
+  test('memory ON after memory OFF shows both REAL generated summaries', async () => {
+    const user = userEvent.setup();
+    open();
+    await screen.findAllByText(/10 memories available to this project/);
+
+    await toggleMemory(user);
+    await generate(user);
+    await screen.findByText(GENERIC);
+
+    await toggleMemory(user);
+    await generate(user);
+
+    // The comparison, with both sides being summaries the API returned.
+    expect(await screen.findByText(HEADING)).toBeInTheDocument();
+    const panel = screen.getByRole('region', { name: HEADING });
+    expect(panel.textContent).toMatch(GENERIC);
+    expect(panel.textContent).toMatch(GROUNDED_WEB);
+    expect(panel.textContent).toMatch(/Grounded in 10 recalled memories/);
+  });
+
+  test('the normal recommendation, evidence and provenance remain below it', async () => {
+    const user = userEvent.setup();
+    open();
+    await screen.findAllByText(/10 memories available to this project/);
+    await toggleMemory(user);
+    await generate(user);
+    await screen.findByText(GENERIC);
+    await toggleMemory(user);
+    await generate(user);
+    await screen.findByText(HEADING);
+
+    // The comparison is supporting context, not a replacement. The recalled count
+    // appears twice by design: as the comparison's note and as the result's chip.
+    expect(screen.getByRole('heading', { name: 'Recommendation' })).toBeInTheDocument();
+    expect(screen.getAllByText(/Grounded in 10 recalled memories/).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText(/Recalled 10 memories from Vive Studio's Hindsight memory bank/))
+      .toBeInTheDocument();
+  });
+
+  test('editing the request drops the comparison — a baseline answers ONE question', async () => {
+    const user = userEvent.setup();
+    open();
+    await screen.findAllByText(/10 memories available to this project/);
+
+    await toggleMemory(user);
+    await generate(user);
+    await screen.findByText(GENERIC);
+
+    await user.clear(screen.getByLabelText(/what should we do next/i));
+    await user.type(screen.getByLabelText(/what should we do next/i), 'Draft the tone of voice.');
+    await toggleMemory(user);
+    await generate(user);
+
+    await screen.findByText(GROUNDED_WEB);
+    expect(screen.queryByText(HEADING)).not.toBeInTheDocument();
+  });
+
+  test('switching PROJECT does not carry the comparison across', async () => {
+    const user = userEvent.setup();
+    open();
+    await screen.findAllByText(/10 memories available to this project/);
+
+    await toggleMemory(user);
+    await generate(user);
+    await screen.findByText(GENERIC);
+
+    await user.selectOptions(screen.getByLabelText(/^project$/i), MOBILE.slug);
+    await screen.findAllByText(/3 memories available to this project/);
+
+    // Memory back on, in the OTHER project: the website baseline must not apply.
+    await toggleMemory(user);
+    await generate(user);
+
+    expect(await screen.findByText(/Grounded direction for the mobile app\./)).toBeInTheDocument();
+    expect(screen.queryByText(HEADING)).not.toBeInTheDocument();
+  });
+
+  test('a baseline stored for another CLIENT is never shown', async () => {
+    const user = userEvent.setup();
+    // A memory-off baseline belonging to a different client, same project id and
+    // same request — only the client differs.
+    sessionStorage.setItem(
+      `clientos:memory-off:other-client-id:${WEBSITE.id}`,
+      JSON.stringify({
+        request: 'create the next homepage direction',
+        summary: 'A DIRECTION BELONGING TO ANOTHER CLIENT',
+        recommendationId: 'rec_x',
+      }),
+    );
+
+    open();
+    await screen.findAllByText(/10 memories available to this project/);
+    await generate(user);
+
+    await screen.findByText(GROUNDED_WEB);
+    expect(screen.queryByText(HEADING)).not.toBeInTheDocument();
+    expect(screen.queryByText(/ANOTHER CLIENT/)).not.toBeInTheDocument();
+  });
+
+  test('a baseline stored for another PROJECT is never shown', async () => {
+    const user = userEvent.setup();
+    sessionStorage.setItem(
+      `clientos:memory-off:${CLIENT.client.id}:${MOBILE.id}`,
+      JSON.stringify({
+        request: 'create the next homepage direction',
+        summary: 'A DIRECTION BELONGING TO THE MOBILE PROJECT',
+        recommendationId: 'rec_y',
+      }),
+    );
+
+    open();
+    await screen.findAllByText(/10 memories available to this project/);
+    await generate(user);
+
+    await screen.findByText(GROUNDED_WEB);
+    expect(screen.queryByText(HEADING)).not.toBeInTheDocument();
+    expect(screen.queryByText(/MOBILE PROJECT/)).not.toBeInTheDocument();
+  });
+
+  test('a failed memory-off generation is never stored as a baseline', async () => {
+    const user = userEvent.setup();
+    open();
+    await screen.findAllByText(/10 memories available to this project/);
+
+    agent.recommend.mockRejectedValueOnce(new Error('generation failed'));
+    await toggleMemory(user);
+    await user.click(screen.getByRole('button', { name: /generate direction/i }));
+    await waitFor(() =>
+      expect(screen.getByText(/No recommendation was generated/i)).toBeInTheDocument());
+
+    // Nothing was stored, so the next memory-backed answer has nothing to pair with.
+    await toggleMemory(user);
+    await generate(user);
+    await screen.findByText(GROUNDED_WEB);
+    expect(screen.queryByText(HEADING)).not.toBeInTheDocument();
+  });
+
+  test('memory ON that recalled nothing shows no comparison', async () => {
+    const user = userEvent.setup();
+    open();
+    await screen.findAllByText(/10 memories available to this project/);
+
+    await toggleMemory(user);
+    await generate(user);
+    await screen.findByText(GENERIC);
+
+    // Memory on, but recall returned nothing: not a "with memory" difference.
+    agent.recommend.mockResolvedValueOnce({
+      recommendationId: 'r-empty', memoryUsed: false, memoryCount: 0, hindsightOk: true,
+      summary: 'Nothing was recalled for this request.', items: [], avoid: [], notes: [],
+      caveats: [], model: 'openai/gpt-oss-120b', latencyMs: 100,
+    });
+    await toggleMemory(user);
+    await generate(user);
+
+    expect(await screen.findByText(/Nothing was recalled for this request\./)).toBeInTheDocument();
+    expect(screen.queryByText(HEADING)).not.toBeInTheDocument();
+  });
+
+  test('memory OFF still produces zero evidence, and memory ON still produces real evidence', async () => {
+    const user = userEvent.setup();
+    open();
+    await screen.findAllByText(/10 memories available to this project/);
+
+    await toggleMemory(user);
+    await generate(user);
+    expect(await screen.findByText('0 client memories informed this recommendation'))
+      .toBeInTheDocument();
+    expect(screen.queryByText(/memory provenance/i)).not.toBeInTheDocument();
+
+    await toggleMemory(user);
+    await generate(user);
+    await screen.findByText(HEADING);
+    expect(screen.getAllByText(/Grounded in 10 recalled memories/)).not.toHaveLength(0);
+    // Provenance rendering per evidence item is covered in ClientEvidence.test.tsx;
+    // this fixture's recommendation carries no evidence items to render one from.
   });
 });
