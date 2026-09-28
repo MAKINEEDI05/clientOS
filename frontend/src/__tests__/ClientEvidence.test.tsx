@@ -79,10 +79,12 @@ describe('ClientEvidence', () => {
     render(<ClientEvidence recommendation={rec({
       items: [line('a', [ev('m1', { statement: 'The client rejected heavy animation.' })])],
     })} />);
-    expect(screen.getByText('Rejection')).toBeInTheDocument();
-    expect(screen.getByText('This project')).toBeInTheDocument();
+    // Type and scope each appear as a badge and again inside the provenance
+    // disclosure — the badge is the reading surface, provenance is the proof.
+    expect(screen.getAllByText('Rejection').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('This project').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('The client rejected heavy animation.')).toBeInTheDocument();
-    expect(screen.getByText(/Revision #3/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Revision #3/).length).toBeGreaterThanOrEqual(1);
   });
 
   test('with memory OFF it reports zero and explains why', () => {
@@ -99,13 +101,40 @@ describe('ClientEvidence', () => {
     expect(screen.getByText(/No specific client memory backed this direction/i)).toBeInTheDocument();
   });
 
-  test('never renders internal identifiers', () => {
-    // Statement deliberately does not contain the id, so any occurrence in the
-    // output would mean the component surfaced the raw identifier itself.
-    const { container } = render(<ClientEvidence recommendation={rec({
+  /**
+   * The memory id IS shown, deliberately — it is what makes a citation checkable
+   * against the memory service rather than merely asserted. What matters is that
+   * it stays behind a disclosure instead of competing with the decision itself.
+   */
+  test('the memory id is available as provenance, not as content', () => {
+    render(<ClientEvidence recommendation={rec({
       items: [line('a', [ev('mem_abc123456789', { statement: 'The client prefers muted tones.' })])],
     })} />);
+
+    // The decision is the content.
     expect(screen.getByText('The client prefers muted tones.')).toBeInTheDocument();
-    expect(container.textContent).not.toContain('mem_abc123456789');
+
+    // The id exists, and is inside a collapsed disclosure — not loose on the card.
+    const id = screen.getByText('mem_abc123456789');
+    const disclosure = id.closest('details');
+    expect(disclosure).not.toBeNull();
+    expect(disclosure).not.toHaveAttribute('open');
+    expect(screen.getByText(/memory provenance/i)).toBeInTheDocument();
+  });
+
+  test('provenance names the memory service and shows the real tags', () => {
+    render(<ClientEvidence recommendation={rec({
+      items: [line('a', [ev('m1', {
+        tags: ['client:vive-studio', 'project:premium-website-redesign', 'scope:project'],
+      })])],
+    })} />);
+    expect(screen.getByText('Hindsight memory')).toBeInTheDocument();
+    expect(screen.getByText('project:premium-website-redesign')).toBeInTheDocument();
+    expect(screen.getByText('client:vive-studio')).toBeInTheDocument();
+  });
+
+  test('provenance shows no tag row rather than an empty one when there are none', () => {
+    render(<ClientEvidence recommendation={rec({ items: [line('a', [ev('m1', { tags: [] })])] })} />);
+    expect(screen.queryByText('Tags')).not.toBeInTheDocument();
   });
 });

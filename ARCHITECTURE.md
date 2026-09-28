@@ -18,8 +18,8 @@
 │                    │                                       │
 │    agents/   extract · conflict · classify · recommend ·   │
 │              evidence · (resolve lives in services)       │
-│    hindsight/ retain · recall · reflect · curate ·         │
-│               directives · banks · tags                   │
+│    hindsight/ retain · recall · curate · directives ·      │
+│               banks · tags        (reflect: not used)      │
 │    llm/      ONE Groq client, schema-validated output      │
 └──────┬─────────────────────────────┬──────────────────────┘
        │                             │
@@ -50,7 +50,7 @@ backend/src/
 ├── repositories/        clients · projects · interactions · memory · conflicts ·
 │                        recommendations · directives · users
 ├── agents/              extract · conflict · classify · recommend · evidence
-├── hindsight/           client · banks · tags · retain · recall · reflect · curate · directives
+├── hindsight/           client · banks · tags · retain · recall · curate · directives
 ├── llm/                 groq.ts · schemas.ts · prompts/
 ├── middleware/          requestContext · validate · asyncHandler · demoToken · errorHandler
 ├── db/                  pool · migrate · seed · migrations/

@@ -75,8 +75,14 @@ so each recommendation line can be bound to specific memories — `reflect`'s `b
 flat list for the whole answer, which would make per-line "Why?" approximate. And prompt
 control matters most for the hardest constraint in the system: never inventing client history.
 
-`reflect` is still used for the standing-brief module, so all three Hindsight pillars are
-genuinely exercised.
+**`reflect` is therefore not called anywhere in ClientOS.** The Hindsight surface actually in
+use is retain, recall, listMemories, memory curation and directives — all on the live path.
+`backend/src/hindsight/reflect.ts` holds an unused helper from evaluating this decision; it has
+never been executed and is not part of the product.
+
+Because directives are consumed by Hindsight during `reflect`, the directives ClientOS creates
+are not enforced by Hindsight itself. A confirmed change binds through recall tags plus the
+local directive record in the Groq prompt — see Decision 12 for the boundary this bends.
 
 ## Decision 11: Scope lives in tags, not in a database column
 

@@ -49,7 +49,7 @@ A client's bank holds every project they have with you:
 ```
 CLIENT  Vive Studio
   └── bank: client-vive-studio
-        ├── project:premium-website-redesign   9 memories
+        ├── project:premium-website-redesign   9 memories  (recalls 10 with client-wide)
         ├── project:mobile-app                 2 memories
         └── scope:client   (no project tag)    1 memory   ← applies to both
 ```
@@ -119,7 +119,7 @@ would let unrelated memory cross a project boundary.
 | List / reconcile | `listMemories({ documentId })` | resolving real memory ids |
 | **Curate** | `sdk.updateMemory` → `state: 'invalidated'` | client-wide preference change |
 | **Directives** | `createDirective` with tags | scoped preference changes |
-| Reflect | `reflect` with `includeFacts` | standing-brief module (not on the demo path) |
+| Reflect | — | **not used.** See §4.2 |
 | Delete bank | `deleteBank` | demo reset only |
 
 `sdk.updateMemory` and `sdk.listBanks` are generated functions reached through our own
@@ -136,7 +136,7 @@ The SDK is what ClientOS calls; these are the endpoints behind it. Base
 | GET | `/v1/default/banks/{bank}` | bank config |
 | POST | `/v1/default/banks/{bank}/memories` | **retain** |
 | POST | `/v1/default/banks/{bank}/memories/recall` | **recall** |
-| POST | `/v1/default/banks/{bank}/reflect` | **reflect** |
+| POST | `/v1/default/banks/{bank}/reflect` | reflect — *ClientOS does not call this* |
 | GET | `/v1/default/banks/{bank}/memories/list` | list memories |
 | GET | `/v1/default/banks/{bank}/memories/{id}` | get one memory |
 | PATCH | `/v1/default/banks/{bank}/memories/{id}` | **curate / invalidate** |
@@ -155,8 +155,38 @@ The SDK is what ClientOS calls; these are the endpoints behind it. Base
   client history that was not supplied.
 - Recall is cheaper and faster than an agentic reflect loop.
 
-`reflect` is still used for the standing-brief module, so Retain, Recall and Reflect are all
-genuinely exercised rather than name-dropped.
+**ClientOS does not call `reflect` anywhere.** The Hindsight capabilities it actually uses are
+**retain**, **recall**, **listMemories**, **memory curation** (invalidate/restore) and
+**directives** — every one of them on the live path, none of them decorative.
+
+`backend/src/hindsight/reflect.ts` contains an unused `reflectStandingBrief` helper written
+while evaluating the option above. It has no caller, no route and no UI, and it has never been
+executed. It is kept only as a starting point should a standing-brief feature be built later;
+until then, treat it as unimplemented.
+
+One consequence worth stating plainly: a bank's `reflectMission` and the **directives** ClientOS
+creates are both inputs Hindsight consumes *during reflect*. Because ClientOS does not call
+reflect, Hindsight's own directive enforcement is not exercised. A confirmed preference change
+still binds correctly — through the retained memory's tags at recall time, and through the
+local directive record injected into the Groq prompt — but the enforcement happens in ClientOS,
+not inside Hindsight.
+
+### 4.3 Which memory id the UI shows
+
+The provenance disclosure on each piece of evidence shows **the id recall returned**, and that
+id will usually *not* match `memory_refs.hindsight_memory_id` for the same statement.
+
+That is expected, and worth knowing before anyone compares the two. Hindsight stores a retained
+statement as more than one memory: the raw retained fact (whose text can carry the context
+suffix) and a normalised form, both with identical tags. Reconciliation after retain records one
+of them; recall — with `preferObservations: true` — serves the other. Verified against a seeded
+bank: 12 retained statements, **24 memories in the bank**, and every id shown in the UI present
+in it.
+
+The UI shows the recall id deliberately, because that is the memory the recommendation was
+actually grounded in. Both ids are real and both resolve in the bank. This is the same effect
+that makes `findBestMatchingRef` necessary when a conflict is raised against a memory with no
+local pointer row.
 
 ## 5. Retain
 

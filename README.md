@@ -72,7 +72,7 @@ meaning without it.
 |---|---|
 | `npm run dev` | Frontend and backend together |
 | `npm run build` | Type-check and build both |
-| `npm test` | Backend (74) + frontend (29) tests |
+| `npm test` | Backend (98, real PostgreSQL + live Hindsight isolation) + frontend (120) |
 | `npm run db:up` / `db:down` | Start/stop the PostgreSQL container |
 | `npm run db:migrate` | Apply SQL migrations |
 | `npm run db:seed` | Seed the demo client (needs Hindsight — writes real memory) |
@@ -113,16 +113,49 @@ a rejection, separately.
 
 ### 2. Recalls with real scope isolation
 
+```text
+ONE CLIENT
+   ↓
+ONE HINDSIGHT BANK                       (client-{slug})
+   ↓
+MULTIPLE PROJECTS                        (tags, never separate banks)
+   ↓
+PROJECT-SCOPED MEMORY + CLIENT-WIDE MEMORY
+   ↓
+ACTIVE-PROJECT RECALL                    (project ∪ client ∪ future, any_strict)
+   ↓
+GROQ RECOMMENDATION
+```
+
 One **Hindsight bank per client**, with project/scope/type/source carried as tags. Recall uses
 compound tag filters with `any_strict` matching, so one project's memory cannot leak into
-another, and one client's bank is invisible to another.
+another, and one client's bank is invisible to another. A client-wide memory is stored **once**
+with no project tag, so it reaches every project without being copied into any of them.
 
-### 3. Grounds every claim in real memory
+**Hindsight holds the experiential memory; PostgreSQL holds application metadata and a display
+cache.** Recall is the agent's only source of client history — no recommendation reads memory
+content from PostgreSQL. `reflect` is deliberately not used; see
+[HINDSIGHT_MEMORY.md §4.2](HINDSIGHT_MEMORY.md).
+
+### 3. Grounds every claim in real memory — and lets you check it
 
 Each recommendation line carries the memory ids it came from. The backend **drops any citation
 that does not correspond to a memory actually returned by recall**, and drops any line that
 asserts client history while citing nothing. The "Why?" text is assembled from the memory's own
 words and its source interaction — it is not generated.
+
+That is checkable from the UI rather than taken on trust. Every piece of evidence carries a
+collapsed **Memory provenance** disclosure showing the memory's real Hindsight id, scope, type,
+source interaction and tags; the client context bar discloses the **Hindsight bank** backing the
+client. Both stay collapsed by default — the decision is the content, the identifier is the
+proof.
+
+Two counts, deliberately worded apart so they cannot be mistaken for each other:
+
+| Shown | Means |
+|---|---|
+| "10 memories available to this project" | stored and in scope: the project's own + client-wide |
+| "Grounded in 10 recalled memories" | what recall actually returned for *this* request |
 
 ### 4. Handles changed preferences without erasing history
 
@@ -154,9 +187,13 @@ authenticated call.
 | Screen | Route | Purpose |
 |---|---|---|
 | Dashboard | `/` | Clients with decision counts and open confirmations |
-| Client Workspace | `/clients/:id` | Record feedback; see current preferences, approvals, rejections |
-| AI Workspace | `/clients/:id/ai` | Ask ClientOS; recommendation → Why → evidence; resolve conflicts |
-| Memory Timeline | `/clients/:id/memory` | How the client's decisions evolved, superseded entries included |
+| Client Workspace | `/clients/:id` | Switch project; record feedback against it; current preferences, approvals, rejections |
+| AI Workspace | `/clients/:id/ai` | Ask ClientOS; recommendation → Why → evidence → memory provenance; resolve conflicts |
+| Memory Timeline | `/clients/:id/memory` | How decisions evolved — this project, client-wide, or all projects |
+
+The active project is shared across all three via `?project=<slug>`, so switching it changes what
+is recalled everywhere. It is not the same thing as a memory's *scope* — see
+[ARCHITECTURE.md §3.2](ARCHITECTURE.md).
 
 ---
 
@@ -168,7 +205,7 @@ React + TypeScript + Vite + Tailwind        (frontend — holds no credentials)
 Express + TypeScript                        (backend)
         ├── controllers → services → repositories → PostgreSQL   (metadata)
         ├── agents/  extraction · conflict · recommendation · evidence
-        ├── hindsight/  retain · recall · reflect · curate · directives
+        ├── hindsight/  retain · recall · curate · directives · tags · banks
         └── llm/  one Groq client, schema-validated output
 ```
 
@@ -183,9 +220,14 @@ See [ARCHITECTURE.md](ARCHITECTURE.md), [HINDSIGHT_MEMORY.md](HINDSIGHT_MEMORY.m
 
 ## Demo
 
-One synthetic client — **Vive Studio**, *Premium Website Redesign* — with eight interactions.
-A second client, Northwind Labs, exists to demonstrate isolation: it wants bold saturated
-colour, and asking it the same question returns the opposite direction.
+**Vive Studio** with two projects in one memory bank — *Premium Website Redesign* (8
+interactions, 9 decisions) and *Mobile App* (2 interactions, 2 decisions) — plus one client-wide
+preference that reaches both. A second client, **Northwind Labs**, has its own bank and wants
+bold saturated colour, so asking it the same question returns the opposite direction.
+
+Seeded statements are authored for a deterministic demo and retained through the real Hindsight
+path; feedback added live goes through the full extraction pipeline. Counts are verified in
+[docs/DEMO_DATA.md](docs/DEMO_DATA.md).
 
 Walkthrough in [DEMO_SCRIPT.md](DEMO_SCRIPT.md). Demo data is synthetic; no real client
 information is used.

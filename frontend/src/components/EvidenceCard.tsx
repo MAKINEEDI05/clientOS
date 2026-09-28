@@ -1,4 +1,5 @@
 import { TypeBadge } from './Badges';
+import { MemoryProvenance } from './MemoryProvenance';
 import { formatDate } from '../lib/format';
 import { scopeLabel } from '../lib/scope';
 import type { EvidenceItem } from '../types/api';
@@ -9,6 +10,10 @@ import type { EvidenceItem } from '../types/api';
  * Every field shown here came back from a Hindsight recall. The backend drops
  * any citation it cannot trace to a recalled memory, so nothing rendered here is
  * generated text.
+ *
+ * The memory's identity and tags sit behind a collapsed disclosure: enough to
+ * verify the citation is a real stored memory, never enough to turn the page into
+ * a debugging view.
  */
 export function EvidenceCard({ evidence }: { evidence: EvidenceItem }) {
   return (
@@ -34,6 +39,8 @@ export function EvidenceCard({ evidence }: { evidence: EvidenceItem }) {
         {evidence.sourceLabelDisplay && evidence.occurredAt && ' · '}
         {evidence.occurredAt && formatDate(evidence.occurredAt)}
       </p>
+
+      <MemoryProvenance evidence={evidence} />
     </li>
   );
 }

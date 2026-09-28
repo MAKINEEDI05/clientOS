@@ -51,8 +51,9 @@ describe('RecommendationCard', () => {
     // The source interaction is what makes the claim checkable by a human:
     // once in the Why sentence, once on the evidence card.
     expect(screen.getAllByText(/Revision #3/).length).toBeGreaterThanOrEqual(2);
-    // Internal identifiers stay out of the UI — the source citation is the trace.
-    expect(screen.queryByText(/mem_abc123456789/)).not.toBeInTheDocument();
+    // The memory id is reachable as provenance, but only behind its disclosure —
+    // the source citation remains the human-readable trace.
+    expect(screen.getByText('mem_abc123456789').closest('details')).not.toBeNull();
   });
 
   test('shows the number of supporting memories', () => {

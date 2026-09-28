@@ -171,11 +171,12 @@ export function AIWorkspace() {
         interactionCount={interactionCount}
         memoryConnected={memoryConnected}
         memoryEnabled={useMemory}
+        bankId={client.hindsightBankId}
       />
 
       <p className="-mt-6 text-xs leading-relaxed text-ink-muted">
-        Project decisions + applicable client-wide preferences. Other projects for{' '}
-        {client.name} are not used.
+        Recalled from Hindsight: this project's decisions + applicable client-wide preferences.
+        Other projects for {client.name} are not recalled.
       </p>
 
       {/* Memory must be settled before a recommendation can be trusted. */}
@@ -315,11 +316,20 @@ export function AIWorkspace() {
               </p>
             </div>
 
-            {!result.memoryUsed && (
-              <p className="mt-2.5 text-sm leading-relaxed text-ink-soft">
-                This direction does not use previous client decisions.
-              </p>
-            )}
+            <p className="mt-2.5 text-sm leading-relaxed text-ink-soft">
+              {result.memoryUsed ? (
+                <>
+                  Recalled {result.memoryCount} memor{result.memoryCount === 1 ? 'y' : 'ies'} from{' '}
+                  {client.name}'s Hindsight memory bank for this request. Open “Why?” on any point
+                  to see the decision it came from.
+                </>
+              ) : (
+                <>
+                  Client memory was off for this request, so no previous decision from{' '}
+                  {client.name} was recalled or used. This direction is generic.
+                </>
+              )}
+            </p>
           </section>
 
           {/* 2 — WHY THIS DIRECTION */}
@@ -409,9 +419,9 @@ export function AIWorkspace() {
               </>
             ) : (
               <>
-                ClientOS will use{' '}
+                ClientOS can draw on{' '}
                 <span className="font-medium text-ink-soft">
-                  {memoryCount} relevant memor{memoryCount === 1 ? 'y' : 'ies'}
+                  {memoryCount} memor{memoryCount === 1 ? 'y' : 'ies'}
                 </span>{' '}
                 for {activeProject.name} — {relevant.project} decided on this project and{' '}
                 {relevant.clientWide} that {relevant.clientWide === 1 ? 'applies' : 'apply'} to all

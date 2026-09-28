@@ -55,6 +55,7 @@ Hindsight Recall  ──►  Groq reasoning  ──►  Recommendation + Why/evi
 | **Multi-project memory** | One client can have many projects. Each recalls its own decisions plus the client-wide ones; a sibling project's decisions are never recalled. A client-wide memory is stored once, not copied per project. |
 | **Grounded recommendations** | Each line is bound to the memory ids it came from. Citations that were not recalled are dropped; lines claiming client history with no citation are removed. |
 | **Why / evidence** | Assembled from the memory's own words and its source interaction — never generated, so it cannot drift from what memory says. |
+| **Checkable provenance** | Each piece of evidence discloses the memory's real Hindsight id, scope, type, source and tags; the client context discloses the Hindsight bank. Collapsed by default — the decision is the content, the identifier is the proof. |
 | **Preference conflicts** | A contradiction halts the write, shows both statements, and asks how widely the change applies. Nothing reaches memory until a human confirms. |
 | **Preserved history** | No memory is ever deleted. Project-scoped changes mark the old preference superseded; client-wide changes invalidate it, which keeps it auditable and restorable. |
 | **Honest failure** | If Hindsight is unreachable the request fails rather than answering without history. The header badge reflects live, authenticated memory status. |
@@ -67,7 +68,7 @@ Hindsight Recall  ──►  Groq reasoning  ──►  Recommendation + Why/evi
 |---|---|---|
 | Dashboard | `/` | Clients, decision counts, open confirmations |
 | Client Workspace | `/clients/:id` | Switch or add projects; record feedback against the active project; current preferences, approvals, rejections |
-| AI Workspace | `/clients/:id/ai` | Pick the project, ask ClientOS; recommendation → Why → evidence; resolve conflicts |
+| AI Workspace | `/clients/:id/ai` | Pick the project, ask ClientOS; recommendation → Why → evidence → memory provenance; resolve conflicts |
 | Memory Timeline | `/clients/:id/memory` | How decisions evolved — this project, client-wide, or all projects; current, superseded and retired entries, with replacements linked |
 
 The active project is shared across all three (held in the URL as `?project=<slug>`),

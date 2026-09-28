@@ -3,15 +3,18 @@ import { projectScopeTagGroups } from './tags.js';
 import { logger } from '../utils/logger.js';
 
 /**
- * Reflect — Hindsight's agentic reasoning over retained memory, guided by the
- * bank's mission, directives and disposition.
+ * NOT WIRED IN. This file has no caller, no route and no UI, and has never been
+ * executed. Do not cite it as a capability ClientOS uses.
  *
- * ClientOS uses `recall` + Groq for recommendations (exact per-bullet citations,
- * and Groq is the locked stack). Reflect powers the "Client Standing Brief"
- * panel, which exercises Hindsight's third pillar genuinely rather than
- * name-dropping it.
+ * Reflect is Hindsight's agentic reasoning over retained memory. ClientOS
+ * deliberately uses `recall` + Groq instead, because recall returns every memory
+ * with its id and so each recommendation line can be bound to specific memories;
+ * reflect's `based_on` is flat for the whole answer, which would make per-line
+ * "Why?" approximate. See docs/PRODUCT_DECISIONS.md Decision 10.
  *
- * `includeFacts: true` is required for `based_on` to be populated.
+ * Kept as a starting point if a standing-brief feature is ever built. If it is,
+ * `includeFacts: true` is required for `based_on` to be populated — that is the
+ * one non-obvious thing this file records.
  */
 
 export interface StandingBrief {

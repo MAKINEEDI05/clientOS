@@ -1,166 +1,204 @@
 # ClientOS — Demo Script
 
-**Target: 2–3 minutes.** One idea: *ClientOS gets better because it remembers what the client
-decided before.*
+**Target: 90 seconds.** One idea: *the agent gets better because it remembers what this client
+decided before — and you can check that it really did.*
 
 ## Before you start
 
 ```bash
 npm run db:up
 npm run verify:memory     # must report CORE MEMORY LOOP VERIFIED
-npm run db:seed           # stage: history (7 interactions, 9 memories)
+npm run db:seed           # 11 interactions, 13 memories across two clients
 npm run dev
 ```
 
-Open <http://localhost:5173>. Confirm the header badge reads **Memory connected**.
+Open <http://localhost:5173> → **Vive Studio → AI Workspace**.
 
-**Do not** pre-submit Revision #6 — it is submitted live in Scene 3 so the conflict is real.
+Wait for the header badge to read **Memory connected** and the switch to read
+**Client memory ON** — the memory check takes a few seconds, and the switch stays disabled
+until it passes.
 
----
-
-## 0:00–0:20 · The problem
-
-> "AI can generate a website concept. But if it doesn't remember why the client rejected the
-> last one, it starts from zero every time."
-
-Open **Vive Studio → AI Workspace**.
+**Do not** pre-submit Revision #6. It is submitted live in Scene 4 so the conflict is real.
 
 ---
 
-## 0:20–0:50 · Scene 1 — without memory
+## 0:00–0:10 · Scene 1 — the problem
 
-Untick **Use client memory**. Ask:
+> "Clients change their minds. Teams forget why. So the same rejected idea comes back three
+> revisions later."
+
+---
+
+## 0:10–0:25 · Scene 2 — without memory
+
+Switch **Client memory OFF**. Ask:
 
 > Create the next homepage direction.
 
-A competent, generic answer appears. Point at the banner:
-
-> "No client history was used."
-
-Every point reads **General practice** — no citations. Don't linger.
-
----
-
-## 0:50–1:20 · Scene 2 — the memory
-
-Open **Memory Timeline**. Nine decisions across five months: premium positioning, a muted
-palette, serif approved, blue-heavy rejected, heavy animation rejected, shorter headlines,
-customer proof above the fold.
-
-> "These aren't chat logs. ClientOS extracted the durable decisions and stored them in
-> Hindsight — and it's selective. Vague feedback like *make it better* is deliberately not
-> stored."
-
----
-
-## 1:20–1:50 · Scene 3 — the same question, with memory
-
-Back to **AI Workspace**. Tick **Use client memory**. Ask the *identical* question.
-
-> **Grounded in 9 recalled memories.**
-
-The answer is now specific to this client: muted palette, serif typography, concise headlines,
-customer proof above the fold, restrained motion — and an **Avoid** list covering heavy
-animation, bright saturated colour, and the blue-heavy direction.
-
-> "Same question. Different answer — because the agent remembers."
-
----
-
-## 1:50–2:10 · Scene 4 — the Why
-
-Click **Why?** on *restrained motion*.
+A competent, generic answer. Point at two things and move on:
 
 ```
-Why:  The client rejected heavy animation. (Revision #3)
-Supporting memories:  ✕ Rejection · Revision #3 · 13 Aug 2026
+Memory off
+Client memory was off for this request, so no previous decision from Vive Studio
+was recalled or used.
+
+CLIENT EVIDENCE
+0 client memories informed this recommendation
 ```
 
-> "It doesn't just remember — it shows you the decision it came from. That citation is a real
-> memory id from Hindsight. If the agent can't point to a memory, we drop the claim."
+> "Nothing about this client. It says so."
 
 ---
 
-## 2:10–2:30 · Scene 5 — the client changes their mind
+## 0:25–0:50 · Scene 3 — the same question, with memory · **THE PROOF**
 
-**Client Workspace → Record client feedback.**
+Switch **Client memory ON**. Ask the *identical* question.
 
-Label `Revision #6`, source *Revision*:
+The header already reads **Using Vive Studio's Hindsight memory · 10 memories available to this
+project · 9 project decisions + 1 client-wide**.
+
+The result now reads:
+
+```
+Recommendation                     Grounded in 10 recalled memories
+Recalled 10 memories from Vive Studio's Hindsight memory bank for this request.
+```
+
+The direction is specific: muted palette, serif typography, concise headlines, customer proof
+above the fold, restrained motion — and an **Avoid** list covering heavy animation, bright
+saturated colour and the blue-heavy direction.
+
+> "Same question. Different answer."
+
+Now prove it is not talk. Click **Why?** on *restrained motion*, then open
+**Memory provenance** on the memory underneath:
+
+```
+Stored in    Hindsight memory
+Memory ID    e68176fd-f958-4416-8916-cceab2f134ea   (a real id — yours will differ)
+Scope        This project
+Type         Rejection
+Source       Revision #3
+Tags         client:vive-studio  project:premium-website-redesign
+             scope:project  type:rejection
+```
+
+> "That's a real memory id in this client's Hindsight bank, with the tags that scope it. If the
+> agent can't point at a memory, we drop the claim."
+
+*(Optional, 3 seconds: open **Memory system details** in the header — `Hindsight bank:
+client-vive-studio`. One bank per client.)*
+
+---
+
+## 0:50–1:05 · Scene 4 — the client changes their mind
+
+**Client Workspace → Add client feedback.** It says *Adding feedback to Premium Website
+Redesign*. Label `Revision #6`, source *Revision*:
 
 > We're now open to brighter accent colours.
 
 ClientOS stops:
 
 ```
-PREFERENCE CHANGE DETECTED
-Previously:  The client wants to avoid bright, saturated colours.   (Design Review #1)
-New:         The client is now open to brighter accent colours.     (Revision #6)
+PROJECT                  Premium Website Redesign
+CLIENT PREFERENCE CHANGED
 
-Apply to:  ( ) Temporary exception   ( ) This project   ( ) All future projects
+Previous decision   The client wants to avoid bright, saturated colours.  (Design Review #1)
+New decision        The client is now open to brighter accent colours.    (Revision #6)
+
+How should this change apply?
+( ) This interaction   ( ) This project   ( ) All future projects
 ```
 
-> "It noticed this contradicts a decision from four months ago — and it hasn't written anything
-> yet. One exception shouldn't silently become a permanent rule, so it asks."
-
-Choose **This project**. Confirm.
+> "It caught a contradiction with a decision from four months ago — and it hasn't written
+> anything yet."
 
 ---
 
-## 2:30–2:50 · Scene 6 — the answer changes again
+## 1:05–1:15 · Scene 5 — scope
 
-**AI Workspace.** Ask the *same* question a third time.
+Choose **This project**. Apply.
+
+> "This changes the preference for this project. Their other work is untouched. The old
+> preference isn't deleted — it's kept as history, marked superseded."
+
+---
+
+## 1:15–1:30 · Scene 6 — the answer changes
+
+Ask the *same* homepage question a third time.
 
 > "Use a muted, restrained colour palette **with brighter accent colours for highlights**"
 
-And in Avoid — note the wording:
+And in **Avoid**, note the wording has narrowed:
 
 > "Bright, saturated colours **as primary palette**"
 
-> "Brighter accents are allowed now. Restraint survives. It understood the difference."
-
-Open **Memory Timeline**: the old preference is still there, struck through, linked to its
-replacement.
-
-> "Nothing was deleted. It learned that the preference changed — for this project."
+> "Brighter accents are allowed now. The restraint survived. It learned the difference."
 
 ---
 
-## 2:50–3:00 · Close
+## 1:30–1:40 · Scene 7 — nothing leaks
 
-> "ClientOS doesn't just remember what the client said. It remembers what the client decided,
-> why they decided it, and uses that experience in the next decision."
+Switch the project selector to **Mobile App**.
+
+Header: **3 memories available to this project · 2 project decisions + 1 client-wide**.
+
+Ask a mobile question, open any **Memory provenance**:
+
+```
+Tags   client:vive-studio  project:mobile-app  scope:project
+```
+
+> "Same client, same bank, different project. The website's decisions are not in here — and the
+> one client-wide preference is, because it belongs to the relationship, not the project."
 
 ---
 
-## If asked: starting from nothing
+## Close
 
-The demo runs on seeded data, but nothing about it is special. **+ Add client** creates a client
-and provisions their memory in one step; add a project, paste in a real piece of client
-feedback, and ClientOS shows what it understood and what it ignored. With no clients at all the
-dashboard explains the three-step loop rather than showing empty counters.
+> "It remembers what the client decided, knows how far each decision reaches, and shows you the
+> memory behind every line."
 
-## If asked: isolation
+---
 
-Open **Northwind Labs → AI Workspace**, same question. The answer is bold, saturated colour and
-playful motion — the opposite direction, from a separate Hindsight bank.
+## If asked: another client
 
-> "One bank per client. Northwind's memory cannot reach Vive Studio's, and vice versa."
+**Northwind Labs → AI Workspace**, same question. Bold, saturated colour and playful motion —
+the opposite direction. **Memory system details** reads `client-northwind-labs`.
+
+> "A separate bank. Northwind's memory cannot reach Vive Studio's, and vice versa."
+
+## If asked: is the seeded history real memory?
+
+Yes — it was written through the same retain path the live app uses, and it is in the bank. The
+*statements* were authored for a deterministic demo rather than extracted by the model. The
+feedback typed in Scene 4 is the live path: extraction, the verbatim-quote check, conflict
+detection, then retain. See [docs/DEMO_DATA.md](docs/DEMO_DATA.md).
 
 ## If asked: what if Hindsight is down?
 
-The badge turns red and the request is refused with *"Memory unavailable. We could not safely
-use client history."*
+The badge turns red, the switch disables, and a memory-backed request is refused with
+*"Memory unavailable."*
 
-> "It won't answer as if it remembered. If memory isn't available, it says so."
+> "It won't answer as if it remembered."
+
+## If asked: does it use Hindsight Reflect?
+
+No. Retain, recall, memory curation and directives — reflect is deliberately not used, because
+recall returns every memory with its id, which is what makes the per-line citations exact. See
+[HINDSIGHT_MEMORY.md §4.2](HINDSIGHT_MEMORY.md).
 
 ## Recovery
 
 | Problem | Fix |
 |---|---|
-| Demo state is wrong | `npm run db:seed` — deletes and recreates the banks |
+| Demo state is wrong | `npm run db:seed` — recreates both banks |
 | Conflict already resolved | Re-seed; Revision #6 is not seeded by default |
+| Switch greyed out | The memory probe is still running or failed — wait, or reload |
 | Badge red | Check `HINDSIGHT_API_KEY`; `npm run verify:memory` |
 | Need the post-conflict state directly | `npm run db:seed -- post_conflict` |
 
-If live memory fails, say so plainly and show the prepared dataset. **Do not claim a live
-memory operation occurred if it did not.**
+If live memory fails, say so plainly. **Do not claim a live memory operation occurred if it did
+not.**

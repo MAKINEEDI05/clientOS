@@ -1,6 +1,10 @@
 # ClientOS — Edge Case & QA Test Results
 
-**Last run:** 2026-09-27, against live Hindsight Cloud + Groq (`openai/gpt-oss-120b`) and PostgreSQL 16.
+**Last full run:** 2026-09-27, against live Hindsight Cloud + Groq (`openai/gpt-oss-120b`) and
+PostgreSQL 16.
+**Partial re-run:** 2026-09-28 — §10 demo flow and the memory-provenance surfaces were re-executed
+end to end in a real browser after the Hindsight-visibility work. Rows re-run on that date are
+marked *(re-run 09-28)*. Rows without that mark carry their 09-27 observations unchanged.
 
 ## How to read this
 
@@ -11,8 +15,9 @@
 | **NOT TESTED** | Not executed. The code path may exist, but no result is claimed. |
 
 Nothing is marked PASS on the basis of code inspection alone. Automated coverage is
-74 backend tests (`npm test`, real PostgreSQL) and 29 frontend component tests, plus
-`npm run verify:memory` (12 live checks) and the manual API/browser runs recorded below.
+**98 backend tests** (`npm test`, real PostgreSQL, including live-Hindsight project and client
+isolation) and **120 frontend tests**, plus `npm run verify:memory` (12 live checks) and the
+manual API/browser runs recorded below.
 
 ### Defects found and fixed during this QA pass
 
@@ -204,14 +209,14 @@ Nothing is marked PASS on the basis of code inspection alone. Automated coverage
 
 | # | Scenario | Expected Result | Pass/Fail | Notes |
 |---|---|---|---|---|
-| 10.1 | Start from clean demo environment | Demo data loads correctly. | **PASS** | npm run db:seed from clean: 8 interactions, 10 memories, banks recreated. |
-| 10.2 | Show generic recommendation | Works without memory. | **PASS** | Memory OFF gave a generic direction with 0 citations and an explicit no-history note. |
-| 10.3 | Show memory timeline | Historical decisions visible. | **PASS** | Timeline rendered 10 memories chronologically with source labels and Hindsight ids. |
-| 10.4 | Repeat same request | Recommendation becomes personalized. | **PASS** | Memory ON recalled 9 memories with 10 citations and avoided all three previously rejected directions. |
-| 10.5 | Click Why | Actual historical evidence appears. | **PASS** | Why panel showed real recalled memories with their interaction labels. |
-| 10.6 | Introduce new conflicting preference | Conflict UI appears. | **PASS** | Revision #6 submitted live raised a conflict against the Design Review #1 memory. |
-| 10.7 | Confirm project scope | New preference is persisted correctly. | **PASS** | Confirming "This project" created the new memory and directive and left the old memory superseded, not deleted. |
-| 10.8 | Repeat request again | Recommendation changes based on new memory. | **PASS** | The same request again moved 9 to 10 memories and changed both the recommendations and the avoid list to permit accents. |
+| 10.1 | Start from clean demo environment | Demo data loads correctly. | **PASS** | *(re-run 09-28)* `npm run db:seed` from clean: 11 interactions, 13 memories across two clients; both banks recreated. Confirmed against the API. |
+| 10.2 | Show generic recommendation | Works without memory. | **PASS** | *(re-run 09-28)* Memory OFF: `memoryUsed=false`, "Memory off" chip, 0 client memories informed the recommendation, no provenance disclosure present, no memory id anywhere in the DOM. |
+| 10.3 | Show memory timeline | Historical decisions visible. | **PASS** | *(re-run 09-28)* Timeline rendered the project's memories chronologically with source labels and ownership (project name / "All projects"). Memory ids are shown on recommendation *evidence*, not on timeline cards. |
+| 10.4 | Repeat same request | Recommendation becomes personalized. | **PASS** | *(re-run 09-28)* Memory ON: "Grounded in 10 recalled memories", direction specific to this client, avoid list covered the previously rejected directions. |
+| 10.5 | Click Why | Actual historical evidence appears. | **PASS** | *(re-run 09-28)* Why panel showed the recalled memories with their interaction labels, and each carries a **Memory provenance** disclosure revealing a real recall-returned memory id plus its `client:` / `project:` / `scope:` / `type:` tags. The displayed id was confirmed present in the recall response. |
+| 10.6 | Introduce new conflicting preference | Conflict UI appears. | **PASS** | *(re-run 09-28)* Revision #6 submitted live through the real extraction path raised a conflict naming its project, showing both statements, with no scope preselected and nothing stored. |
+| 10.7 | Confirm project scope | New preference is persisted correctly. | **PASS** | *(re-run 09-28)* "This project" reported *Superseded — preserved in history*; the timeline kept the old preference visible, marked Superseded, with **Replaced by** linking the new one. The new memory's provenance carried `project:premium-website-redesign` and no sibling tag. |
+| 10.8 | Repeat request again | Recommendation changes based on new memory. | **PASS** | *(re-run 09-28)* The same request moved from **10 to 11 recalled memories**; the summary changed to a muted palette *with selective bright accents*, and the Mobile App project was unaffected (still 3 memories, no conflict). |
 | 10.9 | Refresh page | Memory persists. | **PASS** | Covered by 1.12. |
 | 10.10 | Recover from a failed request | Error/retry path works. | **PASS** | Failure paths return typed errors with retry; exercised via 1.4 and 1.6. |
 | 10.11 | Run demo twice | No accidental duplicate-memory pollution ruins the result. | **PASS** | Demo run twice end to end. Reset deletes and recreates banks, so there is no duplicate-memory pollution. |

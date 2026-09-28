@@ -11,6 +11,11 @@ const TYPE_STYLE: Record<MemoryType, { label: string; className: string; mark: s
   preference_change: { label: 'Preference change', className: 'bg-caution-soft text-caution', mark: '⇄' },
 };
 
+/** Human label for a memory type, so no other component restates these words. */
+export function typeLabel(type: MemoryType | 'unknown'): string {
+  return type === 'unknown' ? 'Not categorised' : TYPE_STYLE[type].label;
+}
+
 export function TypeBadge({ type, showMark = true }: { type: MemoryType | 'unknown'; showMark?: boolean }) {
   const style = type === 'unknown'
     ? { label: 'Uncategorised', className: 'bg-paper-sunken text-ink-muted', mark: '·' }

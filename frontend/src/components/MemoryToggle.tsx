@@ -63,15 +63,15 @@ export function MemoryToggle({
           {unavailable
             ? "This client’s memory cannot be reached, so previous decisions cannot be used."
             : on
-              ? `Ground this direction in ${clientName}’s previous decisions.`
+              ? `Recall ${clientName}’s previous decisions from Hindsight and ground this direction in them.`
               : 'Generate without previous client decisions.'}
         </span>
 
         {!unavailable && (
           <span className="mt-1 block text-xs tabular-nums text-ink-muted">
             {on
-              ? `${memoryCount} relevant memor${memoryCount === 1 ? 'y' : 'ies'}`
-              : `${memoryCount} relevant memor${memoryCount === 1 ? 'y' : 'ies'} will be ignored`}
+              ? `${memoryCount} memor${memoryCount === 1 ? 'y' : 'ies'} available to this project`
+              : `${memoryCount} available memor${memoryCount === 1 ? 'y' : 'ies'} will be ignored`}
           </span>
         )}
       </span>

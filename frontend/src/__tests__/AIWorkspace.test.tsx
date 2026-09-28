@@ -48,7 +48,7 @@ describe('AIWorkspace — project context', () => {
 
     expect(select).toHaveValue(MOBILE.slug);
     // The rest of the page follows: the memory context is the mobile project's.
-    expect(await screen.findAllByText(/3 relevant memories/)).not.toHaveLength(0);
+    expect(await screen.findAllByText(/3 memories available to this project/)).not.toHaveLength(0);
   });
 
   test('the URL carries the active project, so the view is shareable', async () => {
@@ -68,7 +68,7 @@ describe('AIWorkspace — relevant memory count', () => {
     open();
     // 9 website decisions + 1 client-wide. Stated in the context bar and again on
     // the memory switch, so both places have to agree.
-    expect(await screen.findAllByText(/10 relevant memories/)).not.toHaveLength(0);
+    expect(await screen.findAllByText(/10 memories available to this project/)).not.toHaveLength(0);
   });
 
   test('breaks the count down into project and client-wide memory', async () => {
@@ -79,24 +79,24 @@ describe('AIWorkspace — relevant memory count', () => {
   test('the count changes with the project', async () => {
     const user = userEvent.setup();
     open();
-    await screen.findAllByText(/10 relevant memories/);
+    await screen.findAllByText(/10 memories available to this project/);
 
     await user.selectOptions(await screen.findByLabelText(/^project$/i), MOBILE.slug);
 
     // 2 mobile decisions + the same 1 client-wide memory.
-    expect(await screen.findAllByText(/3 relevant memories/)).not.toHaveLength(0);
+    expect(await screen.findAllByText(/3 memories available to this project/)).not.toHaveLength(0);
     expect(await screen.findByText(/2 project decisions \+ 1 client-wide/)).toBeInTheDocument();
   });
 
   test('never shows a sibling project’s count', async () => {
     const user = userEvent.setup();
     const { container } = open();
-    await screen.findAllByText(/10 relevant memories/);
+    await screen.findAllByText(/10 memories available to this project/);
 
     await user.selectOptions(await screen.findByLabelText(/^project$/i), MOBILE.slug);
-    await screen.findAllByText(/3 relevant memories/);
+    await screen.findAllByText(/3 memories available to this project/);
 
-    expect(container.textContent).not.toMatch(/10 relevant memor/);
+    expect(container.textContent).not.toMatch(/10 memories available to this project/);
   });
 });
 
@@ -120,7 +120,7 @@ describe('AIWorkspace — generation uses the active project', () => {
     const user = userEvent.setup();
     open();
     await user.selectOptions(await screen.findByLabelText(/^project$/i), MOBILE.slug);
-    await screen.findAllByText(/3 relevant memories/);
+    await screen.findAllByText(/3 memories available to this project/);
 
     await user.click(screen.getByRole('button', { name: /generate direction/i }));
 
@@ -163,7 +163,8 @@ describe('AIWorkspace — memory off', () => {
     await waitFor(() => expect(agent.recommend).toHaveBeenCalled());
     expect(agent.recommend).toHaveBeenCalledWith(expect.objectContaining({ useMemory: false }));
     expect(await screen.findByText('Memory off')).toBeInTheDocument();
-    expect(screen.getByText(/does not use previous client decisions/i)).toBeInTheDocument();
+    expect(screen.getByText(/no previous decision from Vive Studio was recalled or used/i))
+      .toBeInTheDocument();
   });
 
   test('switching project while memory is off does not switch memory back on', async () => {
@@ -176,7 +177,7 @@ describe('AIWorkspace — memory off', () => {
     expect(toggle).not.toBeChecked();
 
     await user.selectOptions(screen.getByLabelText(/^project$/i), MOBILE.slug);
-    await screen.findAllByText(/3 relevant memories/);
+    await screen.findAllByText(/3 memories available to this project/);
 
     expect(screen.getByRole('checkbox', { name: /client memory/i })).not.toBeChecked();
     await user.click(screen.getByRole('button', { name: /generate direction/i }));

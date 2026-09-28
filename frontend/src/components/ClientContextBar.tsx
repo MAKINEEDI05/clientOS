@@ -1,17 +1,24 @@
 import type { RelevantMemory } from '../lib/memoryCounts';
 
 /**
- * Compact client/project identity with live memory status.
+ * Compact client/project identity, and THE memory status for the screen.
  *
  * Sits at the top of the AI workspace so it is always clear whose memory is in
  * play, and — since one client can have several projects — WHICH project's. The
  * project control is passed in rather than built here, so every screen drives the
- * same active-project state. Nothing about the memory layer's internals is
- * exposed.
+ * same active-project state.
+ *
+ * This is deliberately the only *status* claim on the page. The memory switch
+ * below is a control (its label is the switch position), and the chip on a result
+ * describes that result. Three things, three different jobs, no competing claims.
+ *
+ * The count here is how much memory is AVAILABLE to this project — its own
+ * decisions plus the client-wide ones. It is not the number recalled for a given
+ * request, which is a smaller and separate figure shown on the result itself.
  */
 export function ClientContextBar({
   clientName, projectName, projectControl, memoryCount, relevant,
-  interactionCount, memoryConnected, memoryEnabled = true,
+  interactionCount, memoryConnected, memoryEnabled = true, bankId,
 }: {
   clientName: string;
   projectName?: string | null;
@@ -25,6 +32,12 @@ export function ClientContextBar({
   memoryConnected: boolean;
   /** Whether the user has memory switched on for the current request. */
   memoryEnabled?: boolean;
+  /**
+   * The client's Hindsight bank. Shown behind a disclosure so the memory this
+   * client is backed by is checkable, without putting an identifier in the
+   * headline. Never a credential — the bank id is not a secret.
+   */
+  bankId?: string | null;
 }) {
   // Reachable but switched off is a third state. Showing "active" there would
   // contradict the toggle and imply history is in play when it is not.
@@ -55,13 +68,13 @@ export function ClientContextBar({
             }`}
           />
           {state === 'active'
-            ? 'Client memory active'
+            ? `Using ${clientName}'s Hindsight memory`
             : state === 'off'
-              ? 'Client memory off for this request'
-              : 'Client memory unavailable'}
+              ? 'Client memory is off for this request'
+              : 'Client memory is temporarily unavailable'}
         </span>
         <span className="text-xs tabular-nums text-ink-muted">
-          {memoryCount} relevant memor{memoryCount === 1 ? 'y' : 'ies'}
+          {memoryCount} memor{memoryCount === 1 ? 'y' : 'ies'} available to this project
           {interactionCount !== undefined && (
             <> · {interactionCount} interaction{interactionCount === 1 ? '' : 's'}</>
           )}
@@ -74,6 +87,21 @@ export function ClientContextBar({
             {' + '}
             {relevant.clientWide} client-wide
           </span>
+        )}
+
+        {bankId && (
+          <details className="group mt-0.5 sm:text-right">
+            <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-[0.6875rem] text-ink-muted transition-colors hover:text-ink-soft">
+              <span aria-hidden="true" className="inline-block transition-transform group-open:rotate-90">›</span>
+              Memory system details
+            </summary>
+            <p className="mt-1 text-[0.6875rem] leading-relaxed text-ink-muted sm:text-right">
+              Hindsight bank{' '}
+              <span className="break-all font-mono text-ink-soft">{bankId}</span>
+              <br />
+              One bank per client. This project's memories are tagged inside it.
+            </p>
+          </details>
         )}
       </div>
     </div>

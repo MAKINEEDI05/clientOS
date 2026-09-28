@@ -3,12 +3,17 @@ import { clientTag, projectTag } from './tags.js';
 import { logger } from '../utils/logger.js';
 
 /**
- * Directives are hard rules Hindsight applies during `reflect`, and they are
- * TAG-SCOPED by default: untagged directives always apply, tagged ones only when
- * the request's tags match.
+ * Directives are hard rules, TAG-SCOPED by default: untagged directives always
+ * apply, tagged ones only when the request's tags match.
  *
- * That property is what makes a project-scoped preference change bind only where
- * the user confirmed it, without invalidating the client's broader preference.
+ * IMPORTANT: Hindsight applies directives during `reflect`, which ClientOS does
+ * not call. So the directive recorded here is NOT enforced by Hindsight — it is
+ * the durable, scoped record of a confirmed rule. What makes the confirmed change
+ * actually bind is (1) the retained memory's own tags at recall time and (2) the
+ * local directive record injected into the recommendation prompt
+ * (services/agent.service.ts). Creating it here keeps the rule in the memory
+ * layer where it belongs, and makes it enforceable by Hindsight the day reflect
+ * is used — but do not describe it as active enforcement today.
  */
 
 export interface CreateDirectiveInput {

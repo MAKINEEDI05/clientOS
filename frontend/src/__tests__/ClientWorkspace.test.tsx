@@ -44,7 +44,7 @@ describe('ClientWorkspace — project switching', () => {
 
   test('states the relevant memory count and what it is made of', async () => {
     open();
-    expect(await screen.findAllByText(/10 relevant memories/)).not.toHaveLength(0);
+    expect(await screen.findAllByText(/10 memories available to this project/)).not.toHaveLength(0);
     expect(screen.getByText(/9 project decisions \+ 1 client-wide/)).toBeInTheDocument();
   });
 });

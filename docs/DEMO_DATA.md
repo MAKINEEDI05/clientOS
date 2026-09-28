@@ -2,8 +2,17 @@
 
 All data is **synthetic**. No real client information is used.
 
-Seeded by `npm run db:seed`. Seeding writes through the same Hindsight retain path the live
-application uses, so seeded memory is real memory — not a fixture.
+Seeded by `npm run db:seed`. Verified counts below come from the running API, not from this
+document's history.
+
+**How the seed is produced, precisely.** The memory *statements* are authored in
+`backend/src/data/demoData.ts` so the demo is deterministic, and they are written through the
+same Hindsight retain path the live application uses — so seeded memory is real memory in a real
+bank, not a fixture. What the seed does **not** exercise is LLM extraction: those statements were
+written, not extracted from the feedback text by the model. Feedback submitted live during the
+demo does go through the actual pipeline — extraction, the verbatim-quote check, conflict
+detection, then retain. Say it that way if asked; do not claim the seeded statements were
+model-extracted.
 
 ## Client
 
@@ -30,14 +39,16 @@ submitted live during the demo so conflict detection genuinely runs.
 | 7 | Revision #5 | revision | "Customer proof should appear above the fold." | approval — customer proof above the fold |
 | — | **Revision #6** | revision | **"We're now open to brighter accent colours."** | **submitted live → triggers the conflict** |
 
-Total seeded: 7 interactions, 9 memories for Vive Studio.
+Seeded for this project: **8 interactions** (the seven above plus Relationship Review #1, which
+is recorded here for provenance but retained at *client* scope — see below) producing
+**9 project-scoped memories**. With the client-wide memory, this project recalls from **10**.
 
 > Design Review #1 carries the colour restriction deliberately. It is what Revision #6
 > contradicts — without it the conflict would have nothing to detect, and the demo's
 > centrepiece would not run.
 
-Hindsight additionally consolidates these raw facts into **observations** of its own, so the
-bank typically holds more units than we retained. Those are derived memory, not duplicates.
+Hindsight also stores a normalised form of each retained fact, so the bank holds more units
+than we retained. Those are derived memory, not duplicates — see the verified counts below.
 
 ## Second project — multi-project proof
 
@@ -80,6 +91,28 @@ Asking Northwind the *same* question returns the *opposite* direction — bold a
 because its memory lives in a separate Hindsight bank. This makes isolation demonstrable rather
 than merely asserted.
 
+## Verified counts
+
+Confirmed against the running API after `npm run db:seed`:
+
+| | Interactions | Memories owned | Available to recall | Bank |
+|---|---|---|---|---|
+| **Vive Studio** | **10** | **12** | — | `client-vive-studio` |
+| · Premium Website Redesign | 8 | 9 | **10** (9 + 1 client-wide) | ↑ same bank |
+| · Mobile App | 2 | 2 | **3** (2 + 1 client-wide) | ↑ same bank |
+| · client-wide | — | 1 | reaches every project | ↑ same bank |
+| **Northwind Labs** | **1** | **1** | **1** | `client-northwind-labs` |
+| **Total seeded** | **11** | **13** | | two banks |
+
+"Available to recall" is the project's own memories plus the client-wide ones — what the header
+reports as *"N memories available to this project"*. It is not the number recalled for a given
+request, which depends on the question and is reported separately as *"Grounded in N recalled
+memories"*.
+
+The bank itself holds more units than we retained, because Hindsight also stores a normalised
+form of each statement. Both forms are real and both resolve in the bank; the UI shows the id
+recall returned. See [HINDSIGHT_MEMORY.md §4.3](../HINDSIGHT_MEMORY.md).
+
 ## The demo request
 
 > **Create the next homepage direction.**
@@ -95,7 +128,7 @@ than merely asserted.
 
 ### With memory, before the conflict
 
-9 memories recalled, 10 citations.
+10 memories recalled (the project's 9 plus the client-wide preference).
 
 > "Design a premium homepage that feels elegant and refined, using muted colours, serif
 > typography, and concise messaging while showcasing customer proof above the fold."

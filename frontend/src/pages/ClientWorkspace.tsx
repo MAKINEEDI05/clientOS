@@ -114,6 +114,7 @@ export function ClientWorkspace() {
               relevant={projectState.data ? relevant : undefined}
               interactionCount={activeProject.interactionCount}
               memoryConnected={health?.connected ?? false}
+              bankId={client.hindsightBankId}
             />
           )}
 
