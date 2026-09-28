@@ -1,6 +1,7 @@
-import { ConfidenceBadge, ScopeBadge, StateBadge, TypeBadge } from './Badges';
+import { ActiveBadge, ConfidenceBadge, ScopeBadge, StateBadge, TypeBadge, TypeMark } from './Badges';
+import { Icon } from './Icon';
 import { formatDate } from '../lib/format';
-import { scopeExplainer, scopeLabel } from '../lib/scope';
+import { scopeLabel } from '../lib/scope';
 import type { MemoryItem } from '../types/api';
 
 /**
@@ -8,9 +9,12 @@ import type { MemoryItem } from '../types/api';
  *
  * A retired or superseded memory is rendered muted but NEVER hidden — preserving
  * history is a product promise, so the UI has to show it.
+ *
+ * Two presentations: the full card for the timeline, and a compact row for the
+ * grouped panels in the workspace, where the group already says what type it is.
  */
 export function MemoryCard({
-  memory, compact = false, onRetire, onRestore, busy, activeProjectId,
+  memory, compact = false, onRetire, onRestore, busy, activeProjectId, current = false,
 }: {
   memory: MemoryItem;
   compact?: boolean;
@@ -23,6 +27,8 @@ export function MemoryCard({
   onRetire?: (memory: MemoryItem) => void;
   onRestore?: (memory: MemoryItem) => void;
   busy?: boolean;
+  /** In force and not replaced by a later decision. Decided by the caller, who can see the others. */
+  current?: boolean;
 }) {
   const isRetired = memory.state !== 'valid';
   const canRetire = Boolean(onRetire) && memory.state === 'valid';
@@ -44,51 +50,133 @@ export function MemoryCard({
       ? null
       : memory.project?.name ?? null;
 
+  const statementClass = isRetired
+    ? 'text-ink-muted line-through decoration-ink-faint/70'
+    : 'text-ink';
+
+  if (compact) {
+    const showScope = !isClientWide && memory.scope !== 'project';
+    return (
+      <article className="flex items-start gap-3 py-3">
+        <TypeMark type={memory.memoryType} />
+        <div className="min-w-0 flex-1">
+          <p className={`text-sm leading-relaxed ${statementClass}`}>{memory.statement}</p>
+          {(ownerLabel || showScope || isRetired) && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              {ownerLabel && (
+                <span className="badge badge-outline-accent">
+                  <Icon name="layers" className="h-3 w-3" />
+                  {ownerLabel}
+                </span>
+              )}
+              {showScope && <ScopeBadge scope={memory.scope} />}
+              <StateBadge state={memory.state} />
+            </div>
+          )}
+          <Evolution memory={memory} compact />
+        </div>
+      </article>
+    );
+  }
+
+  const hasFooter = Boolean(memory.sourceQuote) || canRetire || canRestore;
+
   return (
-    <article className={`card p-3.5 ${isRetired ? 'opacity-75' : ''}`}>
+    <article className={`surface p-4 transition-colors sm:p-5 ${isRetired ? 'bg-paper-raised shadow-none' : ''}`}>
       <div className="flex flex-wrap items-center gap-1.5">
         <TypeBadge type={memory.memoryType} />
         <ScopeBadge scope={memory.scope} />
-        <StateBadge state={memory.state} />
+        <span className="ml-auto flex items-center gap-1.5">
+          {current && memory.state === 'valid' && <ActiveBadge />}
+          <StateBadge state={memory.state} />
+        </span>
       </div>
 
-      {ownerLabel && (
-        <p
-          className={`mt-1.5 text-[0.6875rem] font-medium uppercase tracking-wide ${
-            isClientWide ? 'text-accent' : 'text-ink-muted'
-          }`}
-        >
-          {ownerLabel}
-          {isOtherProject && (
-            <span className="font-normal normal-case tracking-normal text-ink-muted/70">
-              {' '}· another project
+      <p className={`mt-3 text-[0.9375rem] leading-relaxed ${statementClass}`}>{memory.statement}</p>
+
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-ink-muted">
+        {ownerLabel && (
+          <span
+            className={`inline-flex items-center gap-1.5 font-medium ${
+              isClientWide ? 'text-accent' : 'text-ink-soft'
+            }`}
+          >
+            <Icon name={isClientWide ? 'layers' : 'folder'} className="h-3.5 w-3.5" />
+            {ownerLabel}
+            {isOtherProject && (
+              <span className="font-normal text-ink-muted"> · another project</span>
+            )}
+          </span>
+        )}
+        {memory.sourceLabelDisplay && (
+          <>
+            <Sep />
+            <span className="inline-flex items-center gap-1.5">
+              <Icon name="message" className="h-3.5 w-3.5 text-ink-faint" />
+              {memory.sourceLabelDisplay}
             </span>
-          )}
-        </p>
-      )}
+          </>
+        )}
+        <Sep />
+        <span>{formatDate(memory.occurredAt)}</span>
+        {memory.confidence !== null && <Sep />}
+        <ConfidenceBadge confidence={memory.confidence} />
+      </div>
 
-      <p className={`mt-2 text-sm leading-relaxed text-ink ${isRetired ? 'line-through decoration-ink-muted/50' : ''}`}>
-        {memory.statement}
-      </p>
+      <Evolution memory={memory} />
 
-      {!compact && (
-        <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-ink-muted">
-          {memory.sourceLabelDisplay && (
-            <span className="font-medium text-ink-soft">{memory.sourceLabelDisplay}</span>
+      {hasFooter && (
+        <div className="mt-3.5 flex flex-wrap items-start justify-between gap-x-3 gap-y-2 border-t border-line-soft pt-3">
+          {memory.sourceQuote ? (
+            <details className="group min-w-0 flex-1">
+              <summary className="disclosure">
+                <Icon name="chevron-right" className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
+                What the client said
+              </summary>
+              <blockquote className="mt-2 border-l-2 border-line-strong pl-3 text-[0.8125rem] italic leading-relaxed text-ink-soft">
+                “{memory.sourceQuote}”
+              </blockquote>
+            </details>
+          ) : (
+            <span />
           )}
-          <span>{formatDate(memory.occurredAt)}</span>
-          <ConfidenceBadge confidence={memory.confidence} />
+          {canRetire && (
+            <button
+              type="button"
+              className="btn-ghost btn-sm -my-1 -mr-1.5 text-ink-muted"
+              disabled={busy}
+              onClick={() => onRetire?.(memory)}
+            >
+              <Icon name="archive" className="h-3.5 w-3.5" />
+              Retire from active use
+            </button>
+          )}
+          {canRestore && (
+            <button
+              type="button"
+              className="btn-ghost btn-sm -my-1 -mr-1.5"
+              disabled={busy}
+              onClick={() => onRestore?.(memory)}
+            >
+              <Icon name="restore" className="h-3.5 w-3.5" />
+              Restore to active use
+            </button>
+          )}
         </div>
       )}
+    </article>
+  );
+}
 
-      {!compact && (
-        <p className="mt-1.5 text-xs leading-relaxed text-ink-muted">{scopeExplainer(memory.scope)}</p>
-      )}
-
-      {/* Evolution: what this replaced, or what replaced it. */}
+/** What this replaced, or what replaced it. */
+function Evolution({ memory, compact = false }: { memory: MemoryItem; compact?: boolean }) {
+  const pad = compact ? 'mt-2 px-3 py-2' : 'mt-3.5 px-3.5 py-3';
+  return (
+    <>
       {memory.supersededBy && (
-        <div className="mt-3 rounded-lg border border-caution/25 bg-caution-soft/25 p-2.5">
-          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-caution">
+        <div className={`rounded-lg border border-caution-line bg-caution-soft/50 ${pad}`}>
+          <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.08em] text-caution">
+            <Icon name="arrow-right" className="h-3 w-3" strokeWidth={2.25} />
             Replaced by
           </p>
           <p className="mt-1 text-sm leading-relaxed text-ink">{memory.supersededBy.statement}</p>
@@ -99,13 +187,14 @@ export function MemoryCard({
       )}
 
       {memory.supersedes.length > 0 && (
-        <div className="mt-3 rounded-lg border border-black/[0.07] bg-paper-sunken p-2.5">
+        <div className={`rounded-lg border border-line-soft bg-paper-sunken ${pad}`}>
           {memory.supersedes.map((s) => (
             <div key={s.memoryRefId}>
-              <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-ink-muted">
+              <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.08em] text-ink-muted">
+                <Icon name="history" className="h-3 w-3" strokeWidth={2.25} />
                 Replaces
               </p>
-              <p className="mt-1 text-sm leading-relaxed text-ink-muted line-through decoration-ink-muted/50">
+              <p className="mt-1 text-sm leading-relaxed text-ink-muted line-through decoration-ink-faint/70">
                 {s.statement}
               </p>
             </div>
@@ -113,42 +202,10 @@ export function MemoryCard({
           <p className="mt-1.5 text-xs text-ink-muted">Kept as history — nothing was deleted.</p>
         </div>
       )}
-
-      {memory.sourceQuote && !compact && (
-        <details className="mt-2.5">
-          <summary className="cursor-pointer text-xs text-ink-muted hover:text-ink-soft">
-            What the client said
-          </summary>
-          <blockquote className="mt-1.5 border-l-2 border-black/10 pl-2.5 text-xs italic leading-relaxed text-ink-soft">
-            “{memory.sourceQuote}”
-          </blockquote>
-        </details>
-      )}
-
-      {(canRetire || canRestore) && (
-        <div className="mt-3 border-t border-black/[0.06] pt-2.5">
-          {canRetire && (
-            <button
-              type="button"
-              className="btn-ghost -ml-2 px-2 py-1 text-xs"
-              disabled={busy}
-              onClick={() => onRetire?.(memory)}
-            >
-              Retire from active use
-            </button>
-          )}
-          {canRestore && (
-            <button
-              type="button"
-              className="btn-ghost -ml-2 px-2 py-1 text-xs"
-              disabled={busy}
-              onClick={() => onRestore?.(memory)}
-            >
-              Restore to active use
-            </button>
-          )}
-        </div>
-      )}
-    </article>
+    </>
   );
+}
+
+function Sep() {
+  return <span aria-hidden="true" className="text-ink-faint">·</span>;
 }

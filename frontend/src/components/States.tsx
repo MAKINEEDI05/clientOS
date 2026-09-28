@@ -1,14 +1,16 @@
 import type { ReactNode } from 'react';
 import { ApiError } from '../lib/api';
+import { Icon, type IconName } from './Icon';
 
+/** Skeleton rows inside one surface — the shape of a list that is on its way. */
 export function LoadingState({ label = 'Loading…', rows = 3 }: { label?: string; rows?: number }) {
   return (
-    <div role="status" aria-live="polite" className="space-y-3">
+    <div role="status" aria-live="polite" className="surface divide-y divide-line-soft overflow-hidden">
       <span className="sr-only">{label}</span>
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="card animate-pulse p-4">
-          <div className="h-3 w-1/3 rounded bg-black/[0.07]" />
-          <div className="mt-3 h-3 w-4/5 rounded bg-black/[0.05]" />
+        <div key={i} className="px-4 py-4 sm:px-5">
+          <div className="skeleton h-3 w-1/3" />
+          <div className="skeleton mt-3 h-3 w-4/5" />
         </div>
       ))}
     </div>
@@ -26,13 +28,18 @@ export function Spinner({ className = '' }: { className?: string }) {
 }
 
 export function EmptyState({
-  title, description, action,
-}: { title: string; description?: string; action?: ReactNode }) {
+  title, description, action, icon,
+}: { title: string; description?: string; action?: ReactNode; icon?: IconName }) {
   return (
-    <div className="card flex flex-col items-center gap-3 px-6 py-10 text-center">
-      <p className="font-display text-base text-ink">{title}</p>
-      {description && <p className="max-w-md text-sm leading-relaxed text-ink-muted">{description}</p>}
-      {action}
+    <div className="surface flex flex-col items-center px-6 py-10 text-center sm:py-12">
+      {icon && (
+        <span className="mb-3.5 grid h-10 w-10 place-items-center rounded-full border border-line bg-paper-sunken text-ink-muted">
+          <Icon name={icon} className="h-[1.125rem] w-[1.125rem]" />
+        </span>
+      )}
+      <p className="section-title">{title}</p>
+      {description && <p className="mt-1.5 max-w-md text-sm leading-relaxed text-ink-muted">{description}</p>}
+      {action && <div className="mt-5">{action}</div>}
     </div>
   );
 }
@@ -74,36 +81,43 @@ export function ErrorState({
   return (
     <div
       role="alert"
-      className={`card border-l-2 p-4 ${
-        tone === 'caution' ? 'border-l-caution bg-caution-soft/40' : 'border-l-reject bg-reject-soft/40'
+      className={`flex animate-fade-in gap-3 rounded-xl border p-4 ${
+        tone === 'caution' ? 'border-caution-line bg-caution-soft/50' : 'border-reject-line bg-reject-soft/50'
       }`}
     >
-      <p className="text-sm font-semibold text-ink">{heading}</p>
-      {reassurance && <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{reassurance}</p>}
-      <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">
-        {error instanceof Error ? error.message : 'An unexpected error occurred.'}
-      </p>
-
-      {isMemory && (
-        <p className="mt-2 text-sm font-medium text-caution">
-          No client history was used. ClientOS will not generate a recommendation it cannot ground in memory.
+      <Icon
+        name="alert"
+        className={`mt-0.5 h-4 w-4 ${tone === 'caution' ? 'text-caution' : 'text-reject'}`}
+      />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-ink">{heading}</p>
+        {reassurance && <p className="mt-1 text-sm leading-relaxed text-ink-soft">{reassurance}</p>}
+        <p className="mt-1 text-sm leading-relaxed text-ink-muted">
+          {error instanceof Error ? error.message : 'An unexpected error occurred.'}
         </p>
-      )}
-      {isLlm && (
-        <p className="mt-2 text-sm text-ink-soft">
-          Client memory is unaffected — nothing was added or changed.
-        </p>
-      )}
-      {context && <p className="mt-2 text-xs text-ink-muted">{context}</p>}
-      {apiError?.requestId && (
-        <p className="mt-2 font-mono text-[0.6875rem] text-ink-muted">ref {apiError.requestId}</p>
-      )}
 
-      {onRetry && (apiError?.isRetryable ?? true) && (
-        <button type="button" onClick={onRetry} className="btn-secondary mt-3">
-          Retry
-        </button>
-      )}
+        {isMemory && (
+          <p className="mt-2 text-sm font-medium text-caution">
+            No client history was used. ClientOS will not generate a recommendation it cannot ground in memory.
+          </p>
+        )}
+        {isLlm && (
+          <p className="mt-2 text-sm text-ink-soft">
+            Client memory is unaffected — nothing was added or changed.
+          </p>
+        )}
+        {context && <p className="mt-2 text-xs text-ink-muted">{context}</p>}
+        {apiError?.requestId && (
+          <p className="mt-2 font-mono text-2xs text-ink-muted">ref {apiError.requestId}</p>
+        )}
+
+        {onRetry && (apiError?.isRetryable ?? true) && (
+          <button type="button" onClick={onRetry} className="btn-secondary btn-sm mt-3">
+            <Icon name="restore" className="h-3.5 w-3.5" />
+            Retry
+          </button>
+        )}
+      </div>
     </div>
   );
 }

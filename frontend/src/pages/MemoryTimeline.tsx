@@ -7,8 +7,9 @@ import { MemoryCard } from '../components/MemoryCard';
 import { ProjectContextSelector } from '../components/ProjectContextSelector';
 import { ConfirmDialog } from '../components/Modal';
 import { EmptyState, ErrorState, LoadingState } from '../components/States';
-import { formatDate } from '../lib/format';
+import { ClientAvatar, handleTabListKeyDown } from '../components/ui';
 import { MEMORY_TYPE_OPTIONS } from '../data/options';
+import { isClient } from '../lib/identity';
 import type { MemoryItem, MemoryType } from '../types/api';
 
 /**
@@ -37,20 +38,22 @@ export function MemoryTimeline() {
   const [pendingRetire, setPendingRetire] = useState<MemoryItem | null>(null);
 
   const clientState = useAsync((s) => clients.get(clientId, s), [clientId]);
-  const { activeProject, activeProjectId, setActiveProject } = useActiveProject(
-    clientState.data?.projects,
-  );
+  const clientData = isClient(clientState.data, clientId) ? clientState.data : null;
+  const { activeProject, activeProjectId, setActiveProject } = useActiveProject(clientData?.projects);
 
   // The project view already returns this project's memories AND the client-wide
   // ones, so the client-wide view is a filter on it rather than another request.
+  // Tagged with the project it was loaded for, so a previous project's memories
+  // are never listed under the newly selected one while it loads.
   const projectMemoryState = useAsync(
-    (s) => projects.memory(activeProjectId, '', s),
+    (s) => projects.memory(activeProjectId, '', s)
+      .then((r) => ({ ...r, projectId: activeProjectId })),
     [activeProjectId],
     { enabled: Boolean(activeProjectId) },
   );
   // Every project's memory. Fetched only when asked for — it is never the default.
   const clientMemoryState = useAsync(
-    (s) => clients.memory(clientId, s),
+    (s) => clients.memory(clientId, s).then((r) => ({ ...r, clientId })),
     [clientId],
     { enabled: view === 'all' },
   );
@@ -70,16 +73,25 @@ export function MemoryTimeline() {
     return res;
   });
 
-  if (clientState.loading) return <LoadingState label="Loading client" />;
   if (clientState.error !== null) {
     return <ErrorState error={clientState.error} onRetry={clientState.reload} />;
   }
+  if (!clientData) {
+    return (
+      <div className="mx-auto max-w-4xl">
+        <LoadingState label="Loading client" />
+      </div>
+    );
+  }
 
   const source = view === 'all' ? clientMemoryState : projectMemoryState;
-  const projectScoped = projectMemoryState.data?.memories ?? [];
+  const projectData = projectMemoryState.data?.projectId === activeProjectId ? projectMemoryState.data : null;
+  const clientMemoryData = clientMemoryState.data?.clientId === clientId ? clientMemoryState.data : null;
+  const sourceData = view === 'all' ? clientMemoryData : projectData;
+  const projectScoped = projectData?.memories ?? [];
   const all =
     view === 'all'
-      ? clientMemoryState.data?.memories ?? []
+      ? clientMemoryData?.memories ?? []
       : view === 'client-wide'
         ? projectScoped.filter((m) => m.project === null)
         : projectScoped;
@@ -89,17 +101,24 @@ export function MemoryTimeline() {
   );
   const groups = groupByMonth(visible);
   const supersededIds = new Set(all.flatMap((m) => m.supersedes.map((s) => s.memoryRefId)));
-  const clientName = clientState.data?.client.name;
-  const projectList = clientState.data?.projects ?? [];
+  const clientName = clientData.client.name;
+  const projectList = clientData.projects;
 
   return (
-    <div className="space-y-6">
-      <header>
-        <p className="eyebrow">Memory timeline</p>
-        <h1 className="mt-1 font-display text-2xl tracking-tight text-ink">{clientName}</h1>
+    <div className="mx-auto max-w-4xl space-y-6">
+      <header className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+        <div className="flex min-w-0 flex-1 items-start gap-3.5">
+          <ClientAvatar name={clientName} size="lg" />
+          <div className="min-w-0">
+            <h1 className="page-title">{clientName}</h1>
+            <p className="mt-1 text-sm text-ink-muted">
+              Every decision this client has made, in order — including the ones that changed.
+            </p>
+          </div>
+        </div>
 
         {projectList.length > 0 && (
-          <div className="mt-3">
+          <div className="md:shrink-0">
             <ProjectContextSelector
               projects={projectList}
               activeId={activeProjectId}
@@ -108,107 +127,117 @@ export function MemoryTimeline() {
             />
           </div>
         )}
-
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-muted">
-          {view === 'project' && (
-            <>
-              Decisions for {activeProject?.name ?? 'this project'}, plus the client-wide ones that
-              apply to all of {clientName}'s work. This is the context a recommendation for this
-              project draws on.
-            </>
-          )}
-          {view === 'client-wide' && (
-            <>
-              Decisions that belong to {clientName} rather than to one project. Each is stored
-              once and applies to every project.
-            </>
-          )}
-          {view === 'all' && (
-            <>
-              Every decision recorded for {clientName}, across all projects and labelled by the
-              project that decided it. Recommendations never use another project's decisions —
-              this view is for looking back.
-            </>
-          )}
-        </p>
-        <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink-muted">
-          Superseded preferences stay visible — ClientOS retires them from reasoning without
-          erasing the record.
-        </p>
       </header>
 
-      <div role="tablist" aria-label="Memory view" className="flex flex-wrap gap-1.5">
-        {VIEWS.map((v) => {
-          const isActive = view === v.value;
-          return (
-            <button
-              key={v.value}
-              role="tab"
-              type="button"
-              aria-selected={isActive}
-              onClick={() => setView(v.value)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-accent-soft text-accent'
-                  : 'text-ink-muted hover:bg-paper-sunken hover:text-ink'
-              }`}
-            >
-              {v.label}
-            </button>
-          );
-        })}
+      <div className="surface">
+        <div className="flex flex-col gap-3 px-4 py-3 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
+          <div
+            role="tablist"
+            aria-label="Memory view"
+            onKeyDown={handleTabListKeyDown}
+            className="segmented self-start"
+          >
+            {VIEWS.map((v) => {
+              const isActive = view === v.value;
+              return (
+                <button
+                  key={v.value}
+                  role="tab"
+                  type="button"
+                  aria-selected={isActive}
+                  tabIndex={isActive ? 0 : -1}
+                  onClick={() => setView(v.value)}
+                  className="segmented-item"
+                >
+                  {v.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {all.length > 0 && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <div className="flex items-center gap-2">
+                <label htmlFor="type-filter" className="text-xs font-medium text-ink-muted">Type</label>
+                <select
+                  id="type-filter"
+                  className="select min-w-[10rem] py-1.5 text-[0.8125rem]"
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value as MemoryType | 'all')}
+                >
+                  <option value="all">All types</option>
+                  {MEMORY_TYPE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <label className="flex cursor-pointer items-center gap-2 text-[0.8125rem] text-ink-soft">
+                <input
+                  type="checkbox"
+                  checked={showRetired}
+                  onChange={(e) => setShowRetired(e.target.checked)}
+                  className="h-4 w-4 rounded accent-[#2d4f86]"
+                />
+                Show superseded and retired
+              </label>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-1 border-t border-line bg-paper-sunken/50 px-4 py-2.5 text-xs leading-relaxed text-ink-muted sm:px-5 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
+          <p className="max-w-2xl">
+            {view === 'project' && (
+              <>
+                Decisions for {activeProject?.name ?? 'this project'}, plus the client-wide ones that
+                apply to all of {clientName}'s work. This is the context a recommendation for this
+                project draws on.
+              </>
+            )}
+            {view === 'client-wide' && (
+              <>
+                Decisions that belong to {clientName} rather than to one project. Each is stored
+                once and applies to every project.
+              </>
+            )}
+            {view === 'all' && (
+              <>
+                Every decision recorded for {clientName}, across all projects and labelled by the
+                project that decided it. Recommendations never use another project's decisions —
+                this view is for looking back.
+              </>
+            )}{' '}
+            Superseded preferences stay visible — ClientOS retires them from reasoning without
+            erasing the record.
+          </p>
+          {all.length > 0 && (
+            <p className="shrink-0 tabular-nums">
+              {visible.length} of {all.length} memories
+            </p>
+          )}
+        </div>
       </div>
 
-      {all.length > 0 && (
-        <div className="card flex flex-wrap items-end gap-4 p-3.5">
-          <div>
-            <label htmlFor="type-filter" className="label">Type</label>
-            <select
-              id="type-filter"
-              className="input min-w-[11rem]"
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value as MemoryType | 'all')}
-            >
-              <option value="all">All types</option>
-              {MEMORY_TYPE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          </div>
-          <label className="flex cursor-pointer items-center gap-2 pb-2 text-sm text-ink-soft">
-            <input
-              type="checkbox"
-              checked={showRetired}
-              onChange={(e) => setShowRetired(e.target.checked)}
-              className="h-4 w-4 accent-[#1f3a5f]"
-            />
-            Show superseded and retired
-          </label>
-          <p className="ml-auto pb-2 text-xs tabular-nums text-ink-muted">
-            {visible.length} of {all.length} memories
-          </p>
-        </div>
-      )}
-
-      {source.loading && <LoadingState label="Loading memory timeline" />}
+      {!sourceData && source.error === null && <LoadingState label="Loading memory timeline" />}
       {source.error !== null && <ErrorState error={source.error} onRetry={source.reload} />}
 
-      {source.data && all.length === 0 && view === 'client-wide' && (
+      {sourceData && all.length === 0 && view === 'client-wide' && (
         <EmptyState
+          icon="layers"
           title="No client-wide decisions yet"
           description="Nothing has been recorded as applying to every project for this client. A preference becomes client-wide when you confirm that a change applies beyond the project it came from."
         />
       )}
 
-      {source.data && all.length === 0 && view !== 'client-wide' && (
+      {sourceData && all.length === 0 && view !== 'client-wide' && (
         <EmptyState
+          icon="history"
           title="No memories yet"
           description="Record what the client told you and ClientOS will extract the durable decisions from it. Nothing is invented — if the feedback carries no decision, nothing is stored."
           action={<Link to={`/clients/${clientId}`} className="btn-primary">Add client feedback</Link>}
         />
       )}
 
-      {source.data && all.length > 0 && visible.length === 0 && (
+      {sourceData && all.length > 0 && visible.length === 0 && (
         <EmptyState title="Nothing matches this filter" description="Try clearing the type filter." />
       )}
 
@@ -216,41 +245,34 @@ export function MemoryTimeline() {
         <ErrorState error={retire.error} context="The memory was not retired." />
       )}
 
-      {groups.map(([month, items]) => (
-        <section key={month}>
-          <h2 className="eyebrow mb-3 border-b border-black/[0.06] pb-1.5">{month}</h2>
-          <ol className="space-y-3">
+      {sourceData && groups.map(([month, items]) => (
+        <section key={month} className="animate-fade-in">
+          <div className="mb-3 flex items-center gap-3">
+            <h2 className="eyebrow text-ink-soft">{month}</h2>
+            <span className="h-px flex-1 bg-line" aria-hidden="true" />
+            <span className="text-2xs tabular-nums text-ink-muted">
+              {items.length} {items.length === 1 ? 'memory' : 'memories'}
+            </span>
+          </div>
+          <ol className="relative space-y-3 border-l border-line pl-5 sm:ml-1.5 sm:pl-6">
             {items.map((m) => {
               const wasReplaced = supersededIds.has(m.id) || m.supersededBy !== null;
+              const current = m.state === 'valid' && !wasReplaced;
               return (
-                <li key={m.id} className="relative pl-5">
+                <li key={m.id} className="relative">
                   <span
                     aria-hidden="true"
-                    className={`absolute left-0 top-4 h-2 w-2 rounded-full ring-2 ring-paper ${
-                      m.state === 'valid' ? 'bg-accent' : 'bg-ink-muted/40'
+                    className={`absolute -left-[1.6875rem] top-5 h-2.5 w-2.5 rounded-full ring-4 ring-canvas sm:-left-[1.9375rem] ${
+                      current
+                        ? 'bg-memory-bright'
+                        : m.state === 'superseded'
+                          ? 'bg-caution/70'
+                          : 'border border-ink-faint bg-canvas'
                     }`}
                   />
-                  <span aria-hidden="true" className="absolute left-[3px] top-6 h-full w-px bg-black/[0.07]" />
-                  <div className="mb-1.5 flex flex-wrap items-center gap-2">
-                    <p className="text-xs text-ink-muted">{formatDate(m.occurredAt)}</p>
-                    {m.state === 'valid' && !wasReplaced && (
-                      <span className="text-[0.625rem] font-semibold uppercase tracking-wide text-approve">
-                        Current
-                      </span>
-                    )}
-                    {m.state === 'superseded' && (
-                      <span className="text-[0.625rem] font-semibold uppercase tracking-wide text-caution">
-                        Superseded
-                      </span>
-                    )}
-                    {m.state === 'invalidated' && (
-                      <span className="text-[0.625rem] font-semibold uppercase tracking-wide text-ink-muted">
-                        Retired
-                      </span>
-                    )}
-                  </div>
                   <MemoryCard
                     memory={m}
+                    current={current}
                     activeProjectId={activeProjectId}
                     onRetire={setPendingRetire}
                     onRestore={(mem) => void restore.run(mem.id)}
@@ -277,7 +299,7 @@ export function MemoryTimeline() {
               recommendations.
             </p>
             {pendingRetire && (
-              <blockquote className="my-3 border-l-2 border-black/10 pl-3 text-ink">
+              <blockquote className="my-3 rounded-r-md border-l-2 border-line-strong bg-paper-sunken px-3 py-2 text-ink">
                 {pendingRetire.statement}
               </blockquote>
             )}

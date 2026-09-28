@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { scopeLabel } from '../lib/scope';
+import { Icon } from './Icon';
 import type { ResolveConflictResult } from '../types/api';
 
 /**
@@ -23,16 +24,17 @@ export function ConflictResolved({
   // The user chose to keep the existing preference: nothing was stored.
   if (!newMemory) {
     return (
-      <section aria-live="polite" className="rounded-2xl border border-black/[0.08] bg-paper px-5 py-4 shadow-card sm:px-6">
+      <section aria-live="polite" className="surface animate-fade-in px-5 py-4 sm:px-6">
         <div className="flex items-start justify-between gap-3">
-          <p className="eyebrow">Preference kept</p>
-          {onDismiss && (
-            <button type="button" onClick={onDismiss} className="btn-ghost -mr-2 -mt-1 px-2 py-0.5 text-xs">
-              Dismiss
-            </button>
-          )}
+          <p className="flex items-center gap-2">
+            <span aria-hidden="true" className="grid h-6 w-6 place-items-center rounded-full bg-ink/[0.06] text-ink-soft">
+              <Icon name="history" className="h-3.5 w-3.5" strokeWidth={2} />
+            </span>
+            <span className="eyebrow text-ink">Preference kept</span>
+          </p>
+          {onDismiss && <DismissButton onClick={onDismiss} />}
         </div>
-        <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+        <p className="mt-2.5 text-sm leading-relaxed text-ink-soft">
           The earlier preference stays in force{projectName ? ` on ${projectName}` : ''}. Nothing
           was added to this client's memory, and the new feedback remains on the project history
           as an interaction.
@@ -64,22 +66,18 @@ export function ConflictResolved({
         : "all of this client's future work";
 
   return (
-    <section
-      aria-live="polite"
-      className="overflow-hidden rounded-2xl border border-approve/25 bg-paper shadow-card"
-    >
-      <div className="border-b border-approve/20 bg-approve-soft/40 px-5 py-3.5 sm:px-6">
-        <div className="flex items-start justify-between gap-3">
-          <p className="eyebrow text-approve">Preference updated</p>
-          {onDismiss && (
-            <button type="button" onClick={onDismiss} className="btn-ghost -mr-2 -mt-1 px-2 py-0.5 text-xs">
-              Dismiss
-            </button>
-          )}
-        </div>
+    <section aria-live="polite" className="surface animate-fade-in overflow-hidden">
+      <div className="flex items-center justify-between gap-3 border-b border-memory-line/70 bg-memory-soft/60 px-5 py-3 sm:px-6">
+        <p className="flex items-center gap-2">
+          <span aria-hidden="true" className="grid h-6 w-6 place-items-center rounded-full bg-memory text-white">
+            <Icon name="check" className="h-3.5 w-3.5" strokeWidth={2.5} />
+          </span>
+          <span className="eyebrow text-memory">Preference updated</span>
+        </p>
+        {onDismiss && <DismissButton onClick={onDismiss} />}
       </div>
 
-      <dl className="divide-y divide-black/[0.06]">
+      <dl className="divide-y divide-line-soft">
         <Row label="New preference">
           <p className="text-[0.9375rem] font-medium leading-relaxed text-ink">{newMemory.statement}</p>
         </Row>
@@ -93,20 +91,26 @@ export function ConflictResolved({
         {supersededMemory && (
           <>
             <Row label="Previous preference">
-              <p className="text-sm leading-relaxed text-ink-muted line-through decoration-ink-muted/35">
+              <p className="text-sm leading-relaxed text-ink-muted line-through decoration-ink-faint/70">
                 {supersededMemory.statement}
               </p>
             </Row>
             {statusLine && (
               <Row label="Status">
-                <p className="text-sm text-ink-soft">{statusLine}</p>
+                <p
+                  className={`text-sm ${
+                    supersededState === 'valid' ? 'font-medium text-caution' : 'text-ink-soft'
+                  }`}
+                >
+                  {statusLine}
+                </p>
               </Row>
             )}
           </>
         )}
       </dl>
 
-      <div className="px-5 py-4 sm:px-6">
+      <div className="border-t border-line bg-paper-sunken/50 px-5 py-4 sm:px-6">
         {supersededMemory && (
           <p className="mb-3 text-sm leading-relaxed text-ink-soft">
             <span className="font-medium text-ink">Nothing was deleted.</span>{' '}
@@ -115,13 +119,14 @@ export function ConflictResolved({
           </p>
         )}
         {resolution.warnings.map((w, i) => (
-          <p key={i} className="mb-2 text-xs text-caution">{w}</p>
+          <p key={i} className="mb-2 flex gap-1.5 text-xs text-caution">
+            <Icon name="alert" className="mt-px h-3.5 w-3.5" />
+            <span>{w}</span>
+          </p>
         ))}
-        <Link
-          to={memoryHref}
-          className="text-sm font-medium text-accent transition-colors hover:text-accent-ring"
-        >
-          {supersededMemory ? 'See both on the memory timeline →' : 'View memory timeline →'}
+        <Link to={memoryHref} className="link inline-flex items-center gap-1 text-sm">
+          {supersededMemory ? 'See both on the memory timeline' : 'View memory timeline'}
+          <Icon name="arrow-right" className="h-3.5 w-3.5" />
         </Link>
       </div>
     </section>
@@ -130,9 +135,17 @@ export function ConflictResolved({
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid gap-1 px-5 py-3.5 sm:grid-cols-[9rem_1fr] sm:gap-4 sm:px-6">
+    <div className="grid gap-1 px-5 py-3.5 sm:grid-cols-[10rem_1fr] sm:gap-4 sm:px-6">
       <dt className="eyebrow pt-0.5">{label}</dt>
       <dd className="min-w-0">{children}</dd>
     </div>
+  );
+}
+
+function DismissButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="btn-ghost btn-sm -my-1 -mr-2 text-ink-muted">
+      Dismiss
+    </button>
   );
 }

@@ -1,5 +1,8 @@
+import type { ReactNode } from 'react';
 import type { RelevantMemory } from '../lib/memoryCounts';
 import type { MemoryAvailability } from '../hooks/useMemoryHealth';
+import { Icon } from './Icon';
+import { ClientAvatar, StatusDot, type StatusTone } from './ui';
 
 /**
  * Compact client/project identity, and THE memory status for the screen.
@@ -20,13 +23,14 @@ import type { MemoryAvailability } from '../hooks/useMemoryHealth';
 export function ClientContextBar({
   clientName, projectName, projectControl, memoryCount, relevant,
   interactionCount, memoryAvailability, memoryEnabled = true, bankId,
-  showClientName = true,
+  showClientName = true, projectDescription,
 }: {
   clientName: string;
   projectName?: string | null;
   /** The shared active-project control, when this screen should offer one. */
-  projectControl?: React.ReactNode;
-  memoryCount: number;
+  projectControl?: ReactNode;
+  /** Memories available to the active project; null while that is still loading. */
+  memoryCount: number | null;
   /** Breakdown of the count into project and client-wide memory, when known. */
   relevant?: RelevantMemory;
   interactionCount?: number;
@@ -48,6 +52,8 @@ export function ClientContextBar({
    * announced twice. The name is still used in the status line, which needs it.
    */
   showClientName?: boolean;
+  /** The active project's own description, when it has one. */
+  projectDescription?: string | null;
 }) {
   // Four display states. "Reachable but switched off" is distinct from "active"
   // — claiming active there would contradict the switch. And "still checking" is
@@ -60,53 +66,55 @@ export function ClientContextBar({
         : memoryEnabled
           ? 'active'
           : 'off';
+
+  const tone: Record<typeof state, { box: string; text: string; dot: StatusTone }> = {
+    active: { box: 'border-memory-line bg-memory-soft/60', text: 'text-memory', dot: 'memory' },
+    off: { box: 'border-line bg-paper-sunken/70', text: 'text-ink-soft', dot: 'off' },
+    checking: { box: 'border-line bg-paper', text: 'text-ink-muted', dot: 'checking' },
+    unavailable: { box: 'border-reject-line bg-reject-soft/50', text: 'text-reject', dot: 'bad' },
+  };
+  const t = tone[state];
+
   return (
-    <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 border-b border-black/[0.08] pb-4">
-      <div className="min-w-0">
+    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-8">
+      <div className="min-w-0 flex-1">
         {showClientName && (
-          <h1 className="font-display text-[1.75rem] leading-tight tracking-tight text-ink">
-            {clientName}
-          </h1>
+          <div className="flex items-center gap-3">
+            <ClientAvatar name={clientName} size="lg" />
+            <h1 className="page-title min-w-0">{clientName}</h1>
+          </div>
         )}
         {projectControl ? (
-          <div className={showClientName ? 'mt-2' : ''}>{projectControl}</div>
+          <div className={showClientName ? 'mt-4' : ''}>{projectControl}</div>
         ) : (
           projectName && (
-            <p
-              className={
-                showClientName
-                  ? 'mt-0.5 text-sm text-ink-muted'
-                  : 'font-display text-lg leading-tight tracking-tight text-ink'
-              }
-            >
-              {projectName}
-            </p>
+            showClientName ? (
+              <p className="mt-0.5 text-sm text-ink-muted">{projectName}</p>
+            ) : (
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-memory-soft text-memory">
+                  <Icon name="folder" className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="eyebrow">Active project</p>
+                  <h2 className="truncate text-[1.0625rem] font-semibold leading-snug tracking-[-0.01em] text-ink">
+                    {projectName}
+                  </h2>
+                </div>
+              </div>
+            )
           )
+        )}
+        {projectDescription && (
+          <p className={`mt-2 max-w-xl text-[0.8125rem] leading-relaxed text-ink-muted ${showClientName ? '' : 'md:pl-[2.625rem]'}`}>
+            {projectDescription}
+          </p>
         )}
       </div>
 
-      <div className="flex flex-col gap-1 sm:items-end">
-        <span
-          className={`inline-flex items-center gap-1.5 text-sm font-medium ${
-            state === 'active'
-              ? 'text-approve'
-              : state === 'unavailable'
-                ? 'text-reject'
-                : 'text-ink-muted'
-          }`}
-        >
-          <span
-            aria-hidden="true"
-            className={`h-1.5 w-1.5 rounded-full ${
-              state === 'active'
-                ? 'bg-approve'
-                : state === 'unavailable'
-                  ? 'bg-reject'
-                  : state === 'checking'
-                    ? 'animate-pulse bg-ink-muted/60'
-                    : 'bg-ink-muted/50'
-            }`}
-          />
+      <div className={`w-full rounded-lg border px-3.5 py-3 transition-colors md:w-auto md:min-w-[18rem] md:max-w-sm ${t.box}`}>
+        <span className={`flex items-center gap-2 text-sm font-medium ${t.text}`}>
+          <StatusDot tone={t.dot} />
           {state === 'checking'
             ? 'Checking client memory…'
             : state === 'active'
@@ -115,36 +123,44 @@ export function ClientContextBar({
                 ? 'Client memory is off for this request'
                 : 'Client memory is temporarily unavailable'}
         </span>
-        <span className="text-xs tabular-nums text-ink-muted">
-          {memoryCount} memor{memoryCount === 1 ? 'y' : 'ies'} available to this project
-          {interactionCount !== undefined && (
-            <> · {interactionCount} interaction{interactionCount === 1 ? '' : 's'}</>
-          )}
-        </span>
-        {/* Why the number is what it is: this project's decisions plus the
-            client-wide ones. Both figures come from the memories themselves. */}
-        {relevant && relevant.total > 0 && (
-          <span className="max-w-xs text-xs leading-relaxed text-ink-muted sm:text-right">
-            {relevant.project} project decision{relevant.project === 1 ? '' : 's'}
-            {' + '}
-            {relevant.clientWide} client-wide
-          </span>
-        )}
-
-        {bankId && (
-          <details className="group mt-0.5 sm:text-right">
-            <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-[0.6875rem] text-ink-muted transition-colors hover:text-ink-soft">
-              <span aria-hidden="true" className="inline-block transition-transform group-open:rotate-90">›</span>
-              Memory system details
-            </summary>
-            <p className="mt-1 text-[0.6875rem] leading-relaxed text-ink-muted sm:text-right">
-              Hindsight bank{' '}
-              <span className="break-all font-mono text-ink-soft">{bankId}</span>
-              <br />
-              One bank per client. This project's memories are tagged inside it.
+        <div className="mt-1.5 space-y-0.5 pl-4">
+          <p className="text-xs tabular-nums text-ink-muted">
+            {memoryCount === null ? (
+              "Loading this project's memory…"
+            ) : (
+              <>
+                {memoryCount} memor{memoryCount === 1 ? 'y' : 'ies'} available to this project
+                {interactionCount !== undefined && (
+                  <> · {interactionCount} interaction{interactionCount === 1 ? '' : 's'}</>
+                )}
+              </>
+            )}
+          </p>
+          {/* Why the number is what it is: this project's decisions plus the
+              client-wide ones. Both figures come from the memories themselves. */}
+          {relevant && relevant.total > 0 && (
+            <p className="text-xs leading-relaxed text-ink-muted">
+              {relevant.project} project decision{relevant.project === 1 ? '' : 's'}
+              {' + '}
+              {relevant.clientWide} client-wide
             </p>
-          </details>
-        )}
+          )}
+
+          {bankId && (
+            <details className="group pt-1">
+              <summary className="disclosure text-2xs">
+                <Icon name="chevron-right" className="h-3 w-3 transition-transform group-open:rotate-90" />
+                Memory system details
+              </summary>
+              <p className="mt-1.5 text-2xs leading-relaxed text-ink-muted">
+                Hindsight bank{' '}
+                <span className="break-all rounded bg-paper/80 px-1 font-mono text-ink-soft">{bankId}</span>
+                <br />
+                One bank per client. This project's memories are tagged inside it.
+              </p>
+            </details>
+          )}
+        </div>
       </div>
     </div>
   );

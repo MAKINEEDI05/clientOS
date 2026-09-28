@@ -8,12 +8,22 @@
   }
 
   body {
-    @apply bg-paper-sunken text-ink font-sans antialiased;
+    @apply bg-canvas font-sans text-ink antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: #d9e4f4;
   }
 
   /* Visible focus for every interactive element — never removed. */
   :focus-visible {
-    @apply outline-none ring-2 ring-accent-ring ring-offset-2 ring-offset-paper;
+    @apply outline-none ring-2 ring-accent-ring/70 ring-offset-2 ring-offset-canvas;
+  }
+
+  /* Native disclosure markers are replaced by an explicit chevron. */
+  summary::-webkit-details-marker {
+    display: none;
   }
 
   /* Respect a user's reduced-motion preference. */
@@ -27,38 +37,155 @@
 }
 
 @layer components {
+  /* ── Surfaces ─────────────────────────────────────────────────────────
+     One raised surface, one recessed one. Structure comes from borders and
+     contrast; shadow is barely there. */
+  .surface {
+    @apply rounded-xl border border-line bg-paper shadow-card;
+  }
+
+  /* Kept as an alias so older markup still reads as a surface. */
   .card {
-    @apply rounded-xl border border-black/[0.07] bg-paper shadow-card;
+    @apply surface;
   }
 
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2
-           text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  .surface-sunken {
+    @apply rounded-lg border border-line-soft bg-paper-sunken;
   }
 
-  .btn-primary {
-    @apply btn bg-accent text-white hover:bg-accent-ring;
+  /* ── Typography ───────────────────────────────────────────────────── */
+  .page-title {
+    @apply font-display text-[1.5rem] font-medium leading-tight tracking-[-0.012em] text-ink sm:text-[1.75rem];
   }
 
-  .btn-secondary {
-    @apply btn border border-black/10 bg-paper text-ink-soft hover:bg-paper-sunken;
-  }
-
-  .btn-ghost {
-    @apply btn text-ink-muted hover:bg-paper-sunken hover:text-ink;
-  }
-
-  .input {
-    @apply w-full rounded-lg border border-black/10 bg-paper px-3 py-2 text-sm
-           text-ink placeholder:text-ink-muted/70 focus:border-accent-ring;
-  }
-
-  .label {
-    @apply mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-muted;
+  .section-title {
+    @apply text-[0.9375rem] font-semibold leading-snug tracking-[-0.006em] text-ink;
   }
 
   .eyebrow {
-    @apply text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-ink-muted;
+    @apply text-2xs font-semibold uppercase tracking-[0.08em] text-ink-muted;
+  }
+
+  .meta {
+    @apply text-xs text-ink-muted;
+  }
+
+  .link {
+    @apply font-medium text-accent underline decoration-accent/30 underline-offset-[3px] transition-colors hover:decoration-accent;
+  }
+
+  /* ── Buttons ──────────────────────────────────────────────────────────
+     Three kinds, two sizes. Nothing else. */
+  .btn {
+    @apply inline-flex min-h-[2.25rem] select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-1.5
+           text-sm font-medium transition-[background-color,border-color,color,box-shadow,transform] duration-150
+           active:translate-y-px disabled:pointer-events-none disabled:opacity-45;
+  }
+
+  .btn-primary {
+    @apply btn bg-ink text-white shadow-[0_1px_2px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.08)] hover:bg-[#2c2f35];
+  }
+
+  .btn-secondary {
+    @apply btn border border-line-strong bg-paper text-ink shadow-card hover:border-ink-faint/70 hover:bg-paper-raised;
+  }
+
+  .btn-ghost {
+    @apply btn text-ink-soft hover:bg-ink/[0.05] hover:text-ink;
+  }
+
+  .btn-sm {
+    @apply min-h-[2rem] px-2.5 py-1 text-[0.8125rem];
+  }
+
+  .btn-icon {
+    @apply min-h-0 h-8 w-8 p-0;
+  }
+
+  /* ── Form controls ──────────────────────────────────────────────────── */
+  .input {
+    @apply w-full rounded-lg border border-line-strong bg-paper px-3 py-2 text-sm text-ink shadow-card
+           transition-[border-color,box-shadow] duration-150 placeholder:text-ink-muted/80
+           hover:border-ink-faint/60 disabled:cursor-not-allowed disabled:bg-paper-sunken disabled:text-ink-muted;
+  }
+
+  .input:focus-visible,
+  .input:focus,
+  .select:focus-visible,
+  .select:focus {
+    @apply border-accent-ring outline-none ring-[3px] ring-accent/15 ring-offset-0;
+  }
+
+  .select {
+    @apply input cursor-pointer appearance-none bg-no-repeat pr-9;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2365686f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m8 10 4-4 4 4M8 14l4 4 4-4'/%3E%3C/svg%3E");
+    background-position: right 0.6rem center;
+    background-size: 1rem 1rem;
+  }
+
+  .label {
+    @apply mb-1.5 block text-[0.8125rem] font-medium text-ink-soft;
+  }
+
+  /* ── Badges ───────────────────────────────────────────────────────────
+     Filled for WHAT a memory is, outlined for HOW FAR it reaches. */
+  .badge {
+    @apply inline-flex items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-2xs font-medium;
+  }
+
+  .badge-neutral {
+    @apply bg-ink/[0.055] text-ink-soft;
+  }
+
+  .badge-memory {
+    @apply bg-memory-soft text-memory;
+  }
+
+  .badge-accent {
+    @apply bg-accent-soft text-accent;
+  }
+
+  .badge-reject {
+    @apply bg-reject-soft text-reject;
+  }
+
+  .badge-caution {
+    @apply bg-caution-soft text-caution;
+  }
+
+  .badge-outline {
+    @apply border border-line-strong bg-paper px-[0.3125rem] py-px text-ink-soft;
+  }
+
+  .badge-outline-accent {
+    @apply border border-accent-line bg-paper px-[0.3125rem] py-px text-accent;
+  }
+
+  /* ── Segmented control (tabs within a page) ──────────────────────────── */
+  .segmented {
+    @apply inline-flex max-w-full items-center gap-0.5 rounded-lg bg-ink/[0.05] p-0.5;
+  }
+
+  .segmented-item {
+    @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-1.5 text-[0.8125rem] font-medium text-ink-muted sm:px-3
+           transition-[background-color,color,box-shadow] duration-150 hover:text-ink
+           aria-selected:bg-paper aria-selected:text-ink aria-selected:shadow-[0_1px_2px_rgba(31,27,18,0.08),0_0_0_1px_rgba(31,27,18,0.05)];
+  }
+
+  /* ── Chips ─────────────────────────────────────────────────────────── */
+  .chip {
+    @apply inline-flex items-center rounded-full border border-line bg-paper px-3 py-1 text-xs text-ink-soft
+           transition-colors hover:border-line-strong hover:bg-paper-raised hover:text-ink;
+  }
+
+  /* ── Disclosures ───────────────────────────────────────────────────── */
+  .disclosure {
+    @apply inline-flex cursor-pointer list-none items-center gap-1 rounded text-xs font-medium text-ink-muted
+           transition-colors hover:text-ink;
+  }
+
+  .skeleton {
+    @apply animate-pulse rounded bg-ink/[0.06];
   }
 
   /* Screen-reader-only helper for accessible labels. */

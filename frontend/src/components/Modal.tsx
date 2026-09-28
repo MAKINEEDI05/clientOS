@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { Icon } from './Icon';
 
 /**
  * Accessible dialog shell.
@@ -68,7 +69,9 @@ export function Modal({
       const panel = panelRef.current;
       if (!panel) return;
       if (panel.contains(document.activeElement)) return;
-      panel.querySelector<HTMLElement>('input, textarea, select, button')?.focus();
+      // A combined selector would match the header's close button first.
+      (panel.querySelector<HTMLElement>('input, textarea, select')
+        ?? panel.querySelector<HTMLElement>('button'))?.focus();
     }, 30);
 
     return () => {
@@ -84,7 +87,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-ink/25 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex animate-overlay-in items-end justify-center overflow-y-auto bg-ink/30 p-0 backdrop-blur-[1px] sm:items-center sm:p-4"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -95,29 +98,29 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={labelledBy ?? titleId}
         aria-describedby={description ? descId : undefined}
-        className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-black/[0.07] bg-paper shadow-raised sm:rounded-2xl"
+        className="max-h-[92dvh] w-full max-w-lg animate-dialog-in overflow-y-auto rounded-t-2xl border border-line bg-paper shadow-overlay sm:rounded-2xl"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-black/[0.06] px-5 py-4">
+        <div className="flex items-start justify-between gap-4 px-5 pb-1 pt-5">
           <div className="min-w-0">
-            <h2 id={titleId} className="font-display text-lg leading-snug text-ink">{title}</h2>
+            <h2 id={titleId} className="text-base font-semibold leading-snug tracking-[-0.01em] text-ink">{title}</h2>
             {description && (
-              <p id={descId} className="mt-1 text-sm leading-relaxed text-ink-muted">{description}</p>
+              <p id={descId} className="mt-1 text-[0.8125rem] leading-relaxed text-ink-muted">{description}</p>
             )}
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="btn-ghost -mr-2 -mt-1 shrink-0 px-2 py-1 text-lg leading-none"
+            className="btn-ghost btn-icon -mr-2 -mt-1.5 shrink-0 text-ink-muted"
           >
-            <span aria-hidden="true">×</span>
+            <Icon name="x" className="h-4 w-4" />
           </button>
         </div>
 
         <div className="px-5 py-4">{children}</div>
 
         {footer && (
-          <div className="flex flex-wrap justify-end gap-2 border-t border-black/[0.06] px-5 py-3.5">
+          <div className="flex flex-wrap justify-end gap-2 border-t border-line bg-paper-sunken/50 px-5 py-3.5">
             {footer}
           </div>
         )}
@@ -153,7 +156,7 @@ export function ConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={pending}
-            className={`btn text-white ${
+            className={`btn text-white shadow-card ${
               tone === 'danger' ? 'bg-reject hover:bg-reject/90' : 'bg-caution hover:bg-caution/90'
             }`}
           >

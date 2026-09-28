@@ -1,6 +1,7 @@
 import type { EvidenceItem } from '../types/api';
 import { scopeLabel } from '../lib/scope';
 import { typeLabel } from './Badges';
+import { Icon } from './Icon';
 
 /**
  * Where a recalled memory actually came from.
@@ -17,18 +18,13 @@ export function MemoryProvenance({ evidence }: { evidence: EvidenceItem }) {
   const tags = evidence.tags ?? [];
 
   return (
-    <details className="group mt-2.5">
-      <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-[0.6875rem] font-medium text-ink-muted transition-colors hover:text-ink-soft">
-        <span
-          aria-hidden="true"
-          className="inline-block transition-transform group-open:rotate-90"
-        >
-          ›
-        </span>
+    <details className="group border-t border-line-soft pt-2.5">
+      <summary className="disclosure text-2xs">
+        <Icon name="chevron-right" className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
         Memory provenance
       </summary>
 
-      <dl className="mt-2 space-y-1 border-l-2 border-black/[0.07] pl-2.5 text-[0.6875rem] leading-relaxed">
+      <dl className="mt-2.5 space-y-1.5 rounded-md bg-paper-sunken px-3 py-2.5 text-2xs leading-relaxed">
         <Row label="Stored in">Hindsight memory</Row>
         <Row label="Memory ID">
           {/* Real Hindsight id. Deliberately small and monospaced: provenance,
@@ -39,13 +35,13 @@ export function MemoryProvenance({ evidence }: { evidence: EvidenceItem }) {
         <Row label="Type">{typeLabel(evidence.memoryType)}</Row>
         {evidence.sourceLabelDisplay && <Row label="Source">{evidence.sourceLabelDisplay}</Row>}
         {tags.length > 0 && (
-          <div className="grid gap-0.5 pt-0.5 sm:grid-cols-[5.5rem_1fr] sm:gap-2">
+          <div className="grid gap-0.5 pt-0.5 sm:grid-cols-[5rem_1fr] sm:gap-2">
             <dt className="text-ink-muted">Tags</dt>
             <dd className="flex flex-wrap gap-1">
               {tags.map((t) => (
                 <span
                   key={t}
-                  className="break-all rounded bg-paper-sunken px-1.5 py-0.5 font-mono text-[0.625rem] text-ink-muted"
+                  className="break-all rounded border border-line bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-muted"
                 >
                   {t}
                 </span>
@@ -60,7 +56,7 @@ export function MemoryProvenance({ evidence }: { evidence: EvidenceItem }) {
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid gap-0.5 sm:grid-cols-[5.5rem_1fr] sm:gap-2">
+    <div className="grid gap-0.5 sm:grid-cols-[5rem_1fr] sm:gap-2">
       <dt className="text-ink-muted">{label}</dt>
       <dd className="min-w-0 text-ink-soft">{children}</dd>
     </div>

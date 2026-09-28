@@ -1,3 +1,4 @@
+import { Icon } from './Icon';
 import type { ProjectSummary } from '../types/api';
 
 /**
@@ -26,7 +27,8 @@ export function ProjectContextSelector({
     return (
       <div className="min-w-0">
         <p className="eyebrow">{label}</p>
-        <p className="mt-0.5 truncate text-[0.9375rem] font-medium text-ink">
+        <p className="mt-1 flex items-center gap-2 truncate text-[0.9375rem] font-medium text-ink">
+          <Icon name="folder" className="h-4 w-4 text-memory" />
           {active?.name ?? '—'}
         </p>
       </div>
@@ -36,19 +38,25 @@ export function ProjectContextSelector({
   return (
     <div className="min-w-0">
       <label htmlFor={id} className="eyebrow block">{label}</label>
-      <select
-        id={id}
-        className="mt-0.5 max-w-full truncate rounded-lg border border-black/[0.09] bg-paper py-1.5 pl-2.5 pr-8 text-[0.9375rem] font-medium text-ink focus:border-accent-ring sm:max-w-xs"
-        value={active?.slug ?? ''}
-        onChange={(e) => onSelect(e.target.value)}
-      >
-        {projects.map((p) => (
-          <option key={p.id} value={p.slug}>
-            {p.name}
-            {p.openConflicts > 0 ? ` (${p.openConflicts} to confirm)` : ''}
-          </option>
-        ))}
-      </select>
+      <div className="relative mt-1.5 w-full sm:w-auto sm:max-w-xs">
+        <Icon
+          name="folder"
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-memory"
+        />
+        <select
+          id={id}
+          className="select w-full truncate py-2 pl-9 text-[0.9375rem] font-medium sm:min-w-[16rem]"
+          value={active?.slug ?? ''}
+          onChange={(e) => onSelect(e.target.value)}
+        >
+          {projects.map((p) => (
+            <option key={p.id} value={p.slug}>
+              {p.name}
+              {p.openConflicts > 0 ? ` (${p.openConflicts} to confirm)` : ''}
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 }

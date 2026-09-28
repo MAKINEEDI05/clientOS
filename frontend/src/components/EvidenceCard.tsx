@@ -1,7 +1,7 @@
-import { TypeBadge } from './Badges';
+import { ScopeBadge, TypeBadge } from './Badges';
+import { Icon } from './Icon';
 import { MemoryProvenance } from './MemoryProvenance';
 import { formatDate } from '../lib/format';
-import { scopeLabel } from '../lib/scope';
 import type { EvidenceItem } from '../types/api';
 
 /**
@@ -17,30 +17,31 @@ import type { EvidenceItem } from '../types/api';
  */
 export function EvidenceCard({ evidence }: { evidence: EvidenceItem }) {
   return (
-    <li className="rounded-xl border border-black/[0.07] bg-paper p-4 shadow-card">
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+    <li className="flex flex-col rounded-lg border border-line bg-paper px-4 py-3.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         <TypeBadge type={evidence.memoryType} />
-        {evidence.scope !== 'unknown' && (
-          <>
-            <span aria-hidden="true" className="text-ink-muted/50">·</span>
-            <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-ink-muted">
-              {scopeLabel(evidence.scope)}
-            </span>
-          </>
-        )}
+        <ScopeBadge scope={evidence.scope} />
       </div>
 
-      <p className="mt-2.5 text-[0.9375rem] leading-relaxed text-ink">{evidence.statement}</p>
-
-      <p className="mt-2.5 text-xs text-ink-muted">
-        {evidence.sourceLabelDisplay && (
-          <span className="font-medium text-ink-soft">{evidence.sourceLabelDisplay}</span>
-        )}
-        {evidence.sourceLabelDisplay && evidence.occurredAt && ' · '}
-        {evidence.occurredAt && formatDate(evidence.occurredAt)}
+      {/* The recalled decision itself, set off by the memory rule. */}
+      <p className="mt-2.5 border-l-2 border-memory-line pl-3 text-[0.9375rem] leading-relaxed text-ink">
+        {evidence.statement}
       </p>
 
-      <MemoryProvenance evidence={evidence} />
+      {(evidence.sourceLabelDisplay || evidence.occurredAt) && (
+        <p className="mt-2.5 flex flex-wrap items-center gap-x-1.5 text-xs text-ink-muted">
+          <Icon name="message" className="h-3.5 w-3.5 text-ink-faint" />
+          {evidence.sourceLabelDisplay && (
+            <span className="font-medium text-ink-soft">{evidence.sourceLabelDisplay}</span>
+          )}
+          {evidence.sourceLabelDisplay && evidence.occurredAt && <span aria-hidden="true">·</span>}
+          {evidence.occurredAt && <span>{formatDate(evidence.occurredAt)}</span>}
+        </p>
+      )}
+
+      <div className="pt-3">
+        <MemoryProvenance evidence={evidence} />
+      </div>
     </li>
   );
 }
@@ -55,7 +56,7 @@ export function EvidenceList({ evidence }: { evidence: EvidenceItem[] }) {
     );
   }
   return (
-    <ul className="space-y-2">
+    <ul className="grid gap-2">
       {evidence.map((e) => (
         <EvidenceCard key={e.memoryId} evidence={e} />
       ))}

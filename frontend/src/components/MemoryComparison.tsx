@@ -1,3 +1,5 @@
+import { ComparePanes } from './ComparePanes';
+
 /**
  * The same question, answered twice: once without this client's memory, once with
  * it.
@@ -24,53 +26,29 @@ export function MemoryComparison({
   return (
     <section
       aria-labelledby="memory-comparison-heading"
-      className="overflow-hidden rounded-2xl border border-black/[0.08] bg-paper shadow-card"
+      className="surface animate-fade-in overflow-hidden"
     >
-      <div className="border-b border-black/[0.06] bg-paper-sunken px-5 py-3 sm:px-6">
-        <h2 id="memory-comparison-heading" className="eyebrow">Memory changes the direction</h2>
-        <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-line px-5 py-3.5 sm:px-6">
+        <h2 id="memory-comparison-heading" className="eyebrow text-ink">Memory changes the direction</h2>
+        <p className="text-xs leading-relaxed text-ink-muted">
           The same request, answered without this client's history and with it.
         </p>
       </div>
 
-      <div className="grid divide-y divide-black/[0.06] sm:grid-cols-2 sm:divide-x sm:divide-y-0">
-        <Side
-          label="Without client memory"
-          tone="muted"
-          note="No previous client decisions were used."
-          text={without}
-        />
-        <Side
-          label="With Hindsight memory"
-          tone="accent"
-          note={`Grounded in ${memoryCount} recalled memor${memoryCount === 1 ? 'y' : 'ies'}.`}
-          text={with_}
-        />
-      </div>
+      <ComparePanes
+        divider="vs"
+        before={{
+          label: 'Without client memory',
+          text: without,
+          note: 'No previous client decisions were used.',
+        }}
+        after={{
+          label: 'With Hindsight memory',
+          icon: 'layers',
+          text: with_,
+          note: `Grounded in ${memoryCount} recalled memor${memoryCount === 1 ? 'y' : 'ies'}.`,
+        }}
+      />
     </section>
-  );
-}
-
-function Side({
-  label, text, note, tone,
-}: {
-  label: string;
-  text: string;
-  note: string;
-  tone: 'muted' | 'accent';
-}) {
-  const isAccent = tone === 'accent';
-  return (
-    <div className={`px-5 py-4 sm:px-6 ${isAccent ? 'bg-approve-soft/20' : ''}`}>
-      <p className={`eyebrow ${isAccent ? 'text-approve' : 'text-ink-muted'}`}>{label}</p>
-      <p
-        className={`mt-2 text-sm leading-relaxed ${
-          isAccent ? 'font-medium text-ink' : 'text-ink-muted'
-        }`}
-      >
-        {text}
-      </p>
-      <p className="mt-2 text-[0.6875rem] leading-relaxed text-ink-muted">{note}</p>
-    </div>
   );
 }

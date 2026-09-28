@@ -16,57 +16,49 @@ export function MemoryToggle({
   enabled: boolean;
   onChange: (next: boolean) => void;
   clientName: string;
-  memoryCount: number;
+  /** Memories available to the active project; null while that is still loading. */
+  memoryCount: number | null;
   disabled?: boolean;
   memoryAvailability: MemoryAvailability;
 }) {
   const checking = memoryAvailability === 'checking';
   const unavailable = memoryAvailability === 'unavailable';
   const on = enabled && !unavailable && !checking;
+  const locked = disabled || unavailable || checking;
 
   return (
-    <label
-      className={`flex cursor-pointer items-start gap-3 rounded-xl px-3.5 py-3 transition-colors ${
-        unavailable
-          ? 'bg-reject-soft/40'
-          : on
-            ? 'bg-approve-soft/50'
-            : 'bg-paper-sunken'
-      } ${disabled || unavailable || checking ? 'cursor-not-allowed' : ''}`}
-    >
+    <label className={`group flex items-start gap-3 ${locked ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
       <input
         type="checkbox"
         checked={enabled}
         onChange={(e) => onChange(e.target.checked)}
-        disabled={disabled || unavailable || checking}
-        className="sr-only"
+        disabled={locked}
+        className="peer sr-only"
       />
 
-      {/* Switch */}
+      {/* Switch. Focus is shown on the track, since the real input is hidden. */}
       <span
         aria-hidden="true"
-        className={`mt-0.5 flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors ${
-          on ? 'bg-approve' : unavailable ? 'bg-reject/40' : 'bg-ink-muted/30'
-        } ${checking ? 'animate-pulse' : ''}`}
+        className={`mt-0.5 flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors duration-200 peer-focus-visible:ring-2 peer-focus-visible:ring-accent-ring/70 peer-focus-visible:ring-offset-2 ${
+          on ? 'bg-memory' : unavailable ? 'bg-reject/35' : 'bg-ink/20'
+        } ${checking ? 'animate-pulse' : ''} ${!locked ? 'group-hover:brightness-95' : ''}`}
       >
         <span
-          className={`h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+          className={`h-4 w-4 rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,0.2)] transition-transform duration-200 ${
             on ? 'translate-x-4' : 'translate-x-0'
           }`}
         />
       </span>
 
       <span className="min-w-0 flex-1">
-        <span className="flex flex-wrap items-baseline gap-x-2">
-          <span className="text-sm font-semibold text-ink">
-            Client memory{' '}
-            <span className={unavailable ? 'text-reject' : on ? 'text-approve' : 'text-ink-muted'}>
-              {checking ? 'checking…' : unavailable ? 'unavailable' : on ? 'ON' : 'OFF'}
-            </span>
+        <span className="block text-sm font-semibold text-ink">
+          Client memory{' '}
+          <span className={unavailable ? 'text-reject' : on ? 'text-memory' : 'font-medium text-ink-muted'}>
+            {checking ? 'checking…' : unavailable ? 'unavailable' : on ? 'ON' : 'OFF'}
           </span>
         </span>
 
-        <span className="mt-0.5 block text-sm leading-relaxed text-ink-soft">
+        <span className="mt-0.5 block text-[0.8125rem] leading-relaxed text-ink-soft">
           {checking
             ? 'Checking whether this client’s memory can be reached…'
             : unavailable
@@ -76,8 +68,8 @@ export function MemoryToggle({
                 : 'Generate without previous client decisions.'}
         </span>
 
-        {!unavailable && !checking && (
-          <span className="mt-1 block text-xs tabular-nums text-ink-muted">
+        {!unavailable && !checking && memoryCount !== null && (
+          <span className="mt-0.5 block text-xs tabular-nums text-ink-muted">
             {on
               ? `${memoryCount} memor${memoryCount === 1 ? 'y' : 'ies'} available to this project`
               : `${memoryCount} available memor${memoryCount === 1 ? 'y' : 'ies'} will be ignored`}

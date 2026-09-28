@@ -4,12 +4,17 @@ import { Dashboard } from './pages/Dashboard';
 import { ClientWorkspace } from './pages/ClientWorkspace';
 import { AIWorkspace } from './pages/AIWorkspace';
 import { MemoryTimeline } from './pages/MemoryTimeline';
+import { EmptyState } from './components/States';
 
 function NotFound() {
   return (
-    <div className="card px-6 py-10 text-center">
-      <p className="font-display text-lg text-ink">Page not found</p>
-      <Link to="/" className="btn-secondary mt-4">Back to clients</Link>
+    <div className="mx-auto max-w-xl">
+      <EmptyState
+        icon="compass"
+        title="Page not found"
+        description="This address does not match a client or a screen in ClientOS."
+        action={<Link to="/" className="btn-secondary">Back to clients</Link>}
+      />
     </div>
   );
 }
