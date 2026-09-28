@@ -182,37 +182,3 @@ export async function listMemoriesByDocument(
     throw toMemoryError(e, 'listMemories');
   }
 }
-
-/** Chronological memory listing for the timeline verification path. */
-export async function listAllMemories(
-  bankId: string,
-  options?: { limit?: number; offset?: number },
-): Promise<Array<{ id: string; text: string; tags: string[]; type: string | null; mentionedAt: string | null }>> {
-  try {
-    const res = await getHindsight().listMemories(bankId, {
-      limit: options?.limit ?? 200,
-      offset: options?.offset ?? 0,
-      timeField: 'mentioned_at',
-    });
-    const items = (res as { memories?: unknown[]; items?: unknown[] }).memories
-      ?? (res as { items?: unknown[] }).items
-      ?? [];
-    return (Array.isArray(items) ? items : [])
-      .map((raw) => {
-        if (!raw || typeof raw !== 'object') return null;
-        const r = raw as Record<string, unknown>;
-        const id = typeof r.id === 'string' ? r.id : null;
-        if (!id) return null;
-        return {
-          id,
-          text: typeof r.text === 'string' ? r.text : '',
-          tags: Array.isArray(r.tags) ? r.tags.filter((t): t is string => typeof t === 'string') : [],
-          type: typeof r.type === 'string' ? r.type : null,
-          mentionedAt: typeof r.mentioned_at === 'string' ? r.mentioned_at : null,
-        };
-      })
-      .filter((x): x is NonNullable<typeof x> => x !== null);
-  } catch (e) {
-    throw toMemoryError(e, 'listMemories');
-  }
-}

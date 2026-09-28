@@ -16,8 +16,9 @@ marked *(re-run 09-28)*. Rows without that mark carry their 09-27 observations u
 
 Nothing is marked PASS on the basis of code inspection alone. Automated coverage is
 **98 backend tests** (`npm test`, real PostgreSQL, including live-Hindsight project and client
-isolation) and **120 frontend tests**, plus `npm run verify:memory` (12 live checks) and the
-manual API/browser runs recorded below.
+isolation) and **213 frontend tests**, plus `npm run verify:memory` (12–13 live checks — the
+anti-fabrication check only runs when the model produces something to drop) and the manual
+API/browser runs recorded below.
 
 ### Defects found and fixed during this QA pass
 

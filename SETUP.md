@@ -127,7 +127,7 @@ npm run dev
 ## 9. Test
 
 ```bash
-npm test              # 98 backend + 120 frontend
+npm test              # 98 backend + 213 frontend
 npm run typecheck     # strict TypeScript, both workspaces
 ```
 

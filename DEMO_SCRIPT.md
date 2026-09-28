@@ -57,7 +57,20 @@ Switch **Client memory ON**. Ask the *identical* question.
 The header already reads **Using Vive Studio's Hindsight memory · 10 memories available to this
 project · 9 project decisions + 1 client-wide**.
 
-The result now reads:
+Because the same question was just asked without memory, ClientOS puts both real answers side by
+side — **do not skip this, it is the shortest proof in the demo**:
+
+```
+MEMORY CHANGES THE DIRECTION
+Without client memory          │  With Hindsight memory
+<the generic answer you just   │  <the grounded answer>
+ saw, verbatim>                │  Grounded in 10 recalled memories.
+```
+
+> "Same question, thirty seconds apart. The only thing that changed is whether it could
+> remember."
+
+Below it, the result itself:
 
 ```
 Recommendation                     Grounded in 10 recalled memories
@@ -68,7 +81,8 @@ The direction is specific: muted palette, serif typography, concise headlines, c
 above the fold, restrained motion — and an **Avoid** list covering heavy animation, bright
 saturated colour and the blue-heavy direction.
 
-> "Same question. Different answer."
+**Why this direction** is labelled **From recalled client decisions** — with memory off it reads
+*General practice only*. That label is not decoration: it follows what recall actually returned.
 
 Now prove it is not talk. Click **Why?** on *restrained motion*, then open
 **Memory provenance** on the memory underneath:

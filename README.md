@@ -72,7 +72,7 @@ meaning without it.
 |---|---|
 | `npm run dev` | Frontend and backend together |
 | `npm run build` | Type-check and build both |
-| `npm test` | Backend (98, real PostgreSQL + live Hindsight isolation) + frontend (120) |
+| `npm test` | Backend (98, real PostgreSQL + live Hindsight isolation) + frontend (213) |
 | `npm run db:up` / `db:down` | Start/stop the PostgreSQL container |
 | `npm run db:migrate` | Apply SQL migrations |
 | `npm run db:seed` | Seed the demo client (needs Hindsight — writes real memory) |

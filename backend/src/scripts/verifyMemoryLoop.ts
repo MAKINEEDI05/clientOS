@@ -32,6 +32,27 @@ const BANK_ID = `verify-${Date.now()}`;
 type Status = 'PASS' | 'FAIL' | 'SKIP';
 const results: Array<{ step: string; status: Status; detail: string }> = [];
 
+/**
+ * Wait for an eventually-consistent condition, up to a bound.
+ *
+ * Invalidation is a write; recall reads an index that is updated asynchronously,
+ * so an immediate re-recall can still return the memory. Retrying is therefore
+ * verifying the same assertion once the service has caught up — NOT tolerating a
+ * failed invalidation. If the condition never holds within the bound, the check
+ * still fails.
+ */
+async function settles(
+  condition: () => Promise<boolean>,
+  { timeoutMs = 15_000, intervalMs = 1_500 } = {},
+): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    if (await condition()) return true;
+    if (Date.now() >= deadline) return false;
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+}
+
 function record(step: string, status: Status, detail: string): void {
   results.push({ step, status, detail });
   const icon = status === 'PASS' ? '✓' : status === 'SKIP' ? '–' : '✗';
@@ -240,19 +261,28 @@ async function main(): Promise<number> {
         record('invalidate', 'FAIL', inv.reason);
         exitCode = 1;
       } else {
-        const after = await recallMemories({
-          bankId: BANK_ID,
-          clientSlug: CLIENT_SLUG,
-          projectSlug: PROJECT_SLUG,
-          query: target.text,
-          budget: 'mid',
+        // The assertion is unchanged — it is retried until the recall index
+        // reflects the write, or the bound expires and the check fails.
+        const gone = await settles(async () => {
+          const after = await recallMemories({
+            bankId: BANK_ID,
+            clientSlug: CLIENT_SLUG,
+            projectSlug: PROJECT_SLUG,
+            query: target.text,
+            budget: 'mid',
+          });
+          return !after.some((m) => m.id === target.id);
         });
-        const stillThere = after.some((m) => m.id === target.id);
-        if (stillThere) {
-          record('invalidate', 'FAIL', 'invalidated memory still appears in recall');
-          exitCode = 1;
-        } else {
+
+        if (gone) {
           record('invalidate', 'PASS', 'invalidated memory no longer recalled (history preserved)');
+        } else {
+          record(
+            'invalidate',
+            'FAIL',
+            'invalidated memory still appears in recall after 15s — invalidation did not take effect',
+          );
+          exitCode = 1;
         }
       }
     } else {

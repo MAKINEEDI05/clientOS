@@ -61,9 +61,3 @@ export async function listApplicableDirectives(
   );
 }
 
-export async function listDirectivesForClient(clientId: string): Promise<DirectiveRow[]> {
-  return query<DirectiveRow>(
-    `SELECT * FROM hindsight_directives WHERE client_id = $1 ORDER BY created_at ASC`,
-    [clientId],
-  );
-}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAsync, useMutation } from '../hooks/useAsync';
 import { useActiveProject } from '../hooks/useActiveProject';
@@ -46,7 +46,6 @@ export function AIWorkspace() {
   // The direction that was on screen when a preference change was applied.
   // Kept so the before/after comparison uses real output, not a re-description.
   const [supersededSummary, setSupersededSummary] = useState<string | null>(null);
-  const [elapsed, setElapsed] = useState(0);
   const { availability: memoryAvailability } = useMemoryHealth();
 
   const clientState = useAsync((s) => clients.get(clientId, s), [clientId]);
@@ -121,16 +120,6 @@ export function AIWorkspace() {
     setComparisonBaseline(null);
     resetAsk();
   }, [activeProjectId, resetAsk]);
-
-  // Drives the workflow-status list while the single backend call is in flight.
-  const startedAt = useRef(0);
-  useEffect(() => {
-    if (!ask.pending) return;
-    startedAt.current = Date.now();
-    setElapsed(0);
-    const timer = window.setInterval(() => setElapsed(Date.now() - startedAt.current), 200);
-    return () => window.clearInterval(timer);
-  }, [ask.pending]);
 
   const resolve = useMutation(
     async (conflictId: string, resolution: 'new_preference' | 'keep_existing', scope?: ConflictScope) => {
@@ -305,7 +294,7 @@ export function AIWorkspace() {
         </form>
       </section>
 
-      {ask.pending && <GenerationProgress useMemory={useMemory} elapsedMs={elapsed} />}
+      {ask.pending && <GenerationProgress useMemory={useMemory} clientName={client.name} />}
 
       {ask.error !== null && !ask.pending && (
         <ErrorState

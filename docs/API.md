@@ -158,8 +158,16 @@ Errors: `400` · `404` · `409` duplicate label · `503 MEMORY_UNAVAILABLE` / `L
 ### `GET /api/projects/:projectId/memory`
 Query: `type`, `scope`, `state`, `from`, `to`, `limit`, `offset`.
 
+Returns this project's memories **plus the client-wide ones**, which is what recall for this
+project draws on.
+
 Each memory carries `hindsightMemoryId`, `memoryType`, `statement`, `scope`, `state`, `tags`,
-`confidence`, `sourceQuote`, `occurredAt`, `interaction`, `supersedes[]`, `supersededBy`.
+`confidence`, `sourceQuote`, `occurredAt`, `interaction`, `supersedes[]`, `supersededBy`, and
+`project`.
+
+`project` is `{ id, slug, name }` for a memory owned by a project, and **`null` for a client-wide
+memory** — that null is how the UI tells the two apart, so a client-wide decision is never
+attributed to whichever project happens to be open.
 
 ### `GET /api/projects/:projectId/conflicts`
 As the client-level endpoint, scoped to one project.

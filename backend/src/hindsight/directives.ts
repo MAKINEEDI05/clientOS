@@ -57,13 +57,6 @@ export async function createScopedDirective(input: CreateDirectiveInput): Promis
   }
 }
 
-export async function listDirectives(bankId: string): Promise<unknown> {
-  try {
-    return await getHindsight().listDirectives(bankId);
-  } catch (e) {
-    throw toMemoryError(e, 'listDirectives');
-  }
-}
 
 export async function deleteDirective(bankId: string, directiveId: string): Promise<void> {
   try {
