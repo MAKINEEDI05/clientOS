@@ -27,10 +27,10 @@ function resolution(over: Partial<ResolveConflictResult> = {}): ResolveConflictR
   };
 }
 
-function renderResolved(r: ResolveConflictResult) {
+function renderResolved(r: ResolveConflictResult, projectName = 'Premium Website Redesign') {
   return render(
     <MemoryRouter>
-      <ConflictResolved resolution={r} memoryHref="/clients/x/memory" />
+      <ConflictResolved resolution={r} memoryHref="/clients/x/memory" projectName={projectName} />
     </MemoryRouter>,
   );
 }
@@ -42,11 +42,18 @@ describe('ConflictResolved', () => {
     expect(screen.queryByText(/^success$/i)).not.toBeInTheDocument();
   });
 
-  test('shows the new preference, its scope, and the previous preference', () => {
+  test('shows the new preference, its reach, and the previous preference', () => {
     renderResolved(resolution());
     expect(screen.getByText('The client is now open to brighter accent colours.')).toBeInTheDocument();
-    expect(screen.getByText('This project')).toBeInTheDocument();
     expect(screen.getByText('The client wants to avoid bright, saturated colours.')).toBeInTheDocument();
+    // Reach is stated in plain language, naming the project it was confirmed on.
+    expect(screen.getByText(/This project — Premium Website Redesign only\./))
+      .toBeInTheDocument();
+  });
+
+  test('a project-scoped change does not read as client-wide', () => {
+    const { container } = renderResolved(resolution());
+    expect(container.textContent).not.toMatch(/all of this client's future work/i);
   });
 
   test('states that the previous preference is preserved, not deleted', () => {
@@ -60,12 +67,30 @@ describe('ConflictResolved', () => {
       supersededMemory: { memoryRefId: 'r-old', statement: 'Old.', state: 'invalidated' },
     }));
     expect(screen.getByText('Retired from active use — preserved in history')).toBeInTheDocument();
-    expect(screen.getByText('All future projects')).toBeInTheDocument();
+    expect(screen.getByText(/All future projects — all of this client's future work\./))
+      .toBeInTheDocument();
   });
 
-  test('links to the memory timeline', () => {
+  test('states plainly that nothing was deleted', () => {
     renderResolved(resolution());
-    expect(screen.getByRole('link', { name: /view memory timeline/i })).toHaveAttribute(
+    expect(screen.getByText(/Nothing was deleted\./)).toBeInTheDocument();
+    expect(screen.getByText(/Both decisions remain on this client's memory timeline/))
+      .toBeInTheDocument();
+  });
+
+  test('a failed retirement is reported honestly, not glossed as success', () => {
+    renderResolved(resolution({
+      resolvedScope: 'future',
+      supersededMemory: { memoryRefId: 'r-old', statement: 'Old.', state: 'valid' },
+      warnings: ['The previous preference could not be retired in the memory service.'],
+    }));
+    expect(screen.getByText(/Still in force — retirement did not complete/)).toBeInTheDocument();
+    expect(screen.getByText(/could not be retired in the memory service/)).toBeInTheDocument();
+  });
+
+  test('links to the memory timeline where both decisions live', () => {
+    renderResolved(resolution());
+    expect(screen.getByRole('link', { name: /memory timeline/i })).toHaveAttribute(
       'href', '/clients/x/memory',
     );
   });
@@ -75,6 +100,8 @@ describe('ConflictResolved', () => {
     expect(screen.getByText('Preference kept')).toBeInTheDocument();
     expect(screen.getByText(/Nothing was added to this client's memory/i)).toBeInTheDocument();
     expect(screen.queryByText('Preference updated')).not.toBeInTheDocument();
+    // It names where the earlier preference stays in force.
+    expect(screen.getByText(/stays in force on Premium Website Redesign/)).toBeInTheDocument();
   });
 
   test('surfaces warnings returned by the backend', () => {

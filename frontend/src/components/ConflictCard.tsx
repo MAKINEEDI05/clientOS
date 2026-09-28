@@ -11,23 +11,28 @@ import type { Conflict, ConflictScope, MemoryItem } from '../types/api';
  * human to say how widely that applies before it touches memory. No scope is
  * preselected — guessing is exactly what this step exists to prevent.
  */
-const SCOPE_OPTIONS: Array<{ value: ConflictScope; label: string; detail: string }> = [
-  {
-    value: 'interaction',
-    label: 'This interaction',
-    detail: 'Only this piece of feedback. The earlier preference stays in force everywhere else.',
-  },
-  {
-    value: 'project',
-    label: 'This project',
-    detail: "Apply to this project. The earlier preference still applies to the client's other work.",
-  },
-  {
-    value: 'future',
-    label: 'All future projects',
-    detail: "Apply across this client's future work. The earlier preference is retired but kept as history.",
-  },
-];
+function scopeOptions(
+  projectName: string | null | undefined,
+): Array<{ value: ConflictScope; label: string; detail: string }> {
+  const here = projectName ? `“${projectName}”` : 'this project';
+  return [
+    {
+      value: 'interaction',
+      label: 'This interaction only',
+      detail: 'A one-off exception for this piece of feedback. The earlier preference stays in force everywhere else.',
+    },
+    {
+      value: 'project',
+      label: 'This project',
+      detail: `Applies to ${here}. The earlier preference still applies to this client's other projects.`,
+    },
+    {
+      value: 'future',
+      label: 'All future projects',
+      detail: "Applies across this client's future work, beyond the one it came from. The earlier preference is retired from use but kept as history.",
+    },
+  ];
+}
 
 /**
  * The conflict payload carries the old statement but not its provenance. The
@@ -62,6 +67,7 @@ export function ConflictCard({
   const [scope, setScope] = useState<ConflictScope | null>(null);
   const isScopeOnly = conflict.oldMemoryId === null;
   const headingId = `conflict-${conflict.id}`;
+  const options = scopeOptions(projectName);
 
   return (
     <section aria-labelledby={headingId} className="overflow-hidden rounded-2xl border border-black/[0.09] bg-paper shadow-card">
@@ -73,16 +79,13 @@ export function ConflictCard({
             <p className="mt-0.5 text-sm font-medium text-ink">{projectName}</p>
           </div>
         )}
-        <p className="eyebrow text-accent">
-          {isScopeOnly ? 'Scope confirmation needed' : 'Client preference changed'}
-        </p>
-        <h2 id={headingId} className="mt-1.5 font-display text-xl leading-snug text-ink">
-          {isScopeOnly ? 'How widely should this apply?' : 'A newer decision conflicts with an earlier one'}
+        <h2 id={headingId} className="font-display text-[1.375rem] leading-snug tracking-tight text-ink">
+          {isScopeOnly ? 'How widely does this apply?' : 'Client preference changed'}
         </h2>
         <p className="mt-1.5 max-w-prose text-sm leading-relaxed text-ink-muted">
           {isScopeOnly
-            ? 'This feedback may apply beyond the current project. Confirm its reach before ClientOS stores it.'
-            : 'ClientOS found a newer decision that conflicts with an earlier client preference. Nothing has been stored yet.'}
+            ? 'This feedback may reach beyond the current project. ClientOS will not guess how far — confirm it below.'
+            : 'ClientOS spotted that this contradicts an earlier decision. It has stored nothing: how far the change reaches is your call, not its.'}
         </p>
       </div>
 
@@ -122,14 +125,15 @@ export function ConflictCard({
 
         {/* Scope — the primary decision */}
         <fieldset className="mt-6" disabled={pending}>
-          <legend className="eyebrow mb-0.5">How should this change apply?</legend>
-          <p className="mb-3 text-xs leading-relaxed text-ink-muted">
-            Choose one to continue. This is about how far the preference reaches — not which
-            project you are working on.
+          <legend className="eyebrow mb-0.5">How far does this change apply?</legend>
+          <p className="mb-3 max-w-prose text-xs leading-relaxed text-ink-muted">
+            Choose one to continue — nothing is stored until you do. This is the reach of the
+            client's decision, which is a different question from which project you happen to be
+            working on.
           </p>
 
-          <div role="radiogroup" aria-label="How should this change apply?" className="space-y-1.5">
-            {SCOPE_OPTIONS.map((option) => {
+          <div role="radiogroup" aria-label="How far does this change apply?" className="space-y-1.5">
+            {options.map((option) => {
               const selected = scope === option.value;
               return (
                 <label
@@ -188,8 +192,9 @@ export function ConflictCard({
           </button>
         </div>
 
-        <p className="mt-3.5 text-xs leading-relaxed text-ink-muted">
-          Previous client decisions remain in history even when a newer decision supersedes them.
+        <p className="mt-3.5 max-w-prose text-xs leading-relaxed text-ink-muted">
+          Whichever you choose, the earlier decision is kept. ClientOS marks it superseded or
+          retires it from use — it is never deleted, and it stays on the memory timeline.
         </p>
         <p className="mt-1 text-[0.6875rem] text-ink-muted">Detected {formatDate(conflict.createdAt)}</p>
       </div>

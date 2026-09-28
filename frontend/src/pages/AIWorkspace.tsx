@@ -227,6 +227,7 @@ export function AIWorkspace() {
       {lastResolution && (
         <ConflictResolved
           resolution={lastResolution}
+          projectName={activeProject.name}
           memoryHref={memoryHref}
           onDismiss={() => {
             setLastResolution(null);

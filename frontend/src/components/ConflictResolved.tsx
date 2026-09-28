@@ -10,11 +10,13 @@ import type { ResolveConflictResult } from '../types/api';
  * preserved is verifiable rather than asserted.
  */
 export function ConflictResolved({
-  resolution, memoryHref, onDismiss,
+  resolution, memoryHref, onDismiss, projectName,
 }: {
   resolution: ResolveConflictResult;
   memoryHref: string;
   onDismiss?: () => void;
+  /** The project the change was confirmed on, so "this project" is never abstract. */
+  projectName?: string | null;
 }) {
   const { newMemory, supersededMemory, resolvedScope } = resolution;
 
@@ -31,20 +33,35 @@ export function ConflictResolved({
           )}
         </div>
         <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-          The earlier preference stays in force. Nothing was added to this client's memory, and
-          the new feedback remains on the project history as an interaction.
+          The earlier preference stays in force{projectName ? ` on ${projectName}` : ''}. Nothing
+          was added to this client's memory, and the new feedback remains on the project history
+          as an interaction.
         </p>
       </section>
     );
   }
 
   const supersededState = supersededMemory?.state;
+  // Every branch reports what the backend actually did to the old memory. "valid"
+  // means the retirement did not complete — said plainly rather than glossed.
   const statusLine =
     supersededState === 'invalidated'
       ? 'Retired from active use — preserved in history'
       : supersededState === 'superseded'
         ? 'Superseded — preserved in history'
-        : null;
+        : supersededState === 'valid'
+          ? 'Still in force — retirement did not complete'
+          : null;
+
+  const scope = resolvedScope ?? newMemory.scope;
+  const appliesTo =
+    scope === 'interaction'
+      ? 'that one piece of feedback only'
+      : scope === 'project'
+        ? projectName
+          ? `${projectName} only`
+          : 'this project only'
+        : "all of this client's future work";
 
   return (
     <section
@@ -67,9 +84,9 @@ export function ConflictResolved({
           <p className="text-[0.9375rem] font-medium leading-relaxed text-ink">{newMemory.statement}</p>
         </Row>
 
-        <Row label="Scope">
+        <Row label="Applies to">
           <p className="text-sm text-ink-soft">
-            {scopeLabel(resolvedScope ?? newMemory.scope)}
+            {scopeLabel(scope)} — {appliesTo}.
           </p>
         </Row>
 
@@ -90,6 +107,13 @@ export function ConflictResolved({
       </dl>
 
       <div className="px-5 py-4 sm:px-6">
+        {supersededMemory && (
+          <p className="mb-3 text-sm leading-relaxed text-ink-soft">
+            <span className="font-medium text-ink">Nothing was deleted.</span>{' '}
+            Both decisions remain on this client's memory timeline — the earlier one as history,
+            the new one as current.
+          </p>
+        )}
         {resolution.warnings.map((w, i) => (
           <p key={i} className="mb-2 text-xs text-caution">{w}</p>
         ))}
@@ -97,7 +121,7 @@ export function ConflictResolved({
           to={memoryHref}
           className="text-sm font-medium text-accent transition-colors hover:text-accent-ring"
         >
-          View memory timeline →
+          {supersededMemory ? 'See both on the memory timeline →' : 'View memory timeline →'}
         </Link>
       </div>
     </section>

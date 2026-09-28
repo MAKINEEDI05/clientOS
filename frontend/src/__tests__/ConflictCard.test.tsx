@@ -38,7 +38,8 @@ describe('findOldMemory', () => {
 describe('ConflictCard — presentation', () => {
   test('is framed as a client preference change, not an error', () => {
     render(<ConflictCard conflict={conflict()} {...base} />);
-    expect(screen.getByText('Client preference changed')).toBeInTheDocument();
+    // The product statement is the heading, not a label above one.
+    expect(screen.getByRole('heading', { name: 'Client preference changed' })).toBeInTheDocument();
     expect(screen.queryByText(/error|warning|failed/i)).not.toBeInTheDocument();
   });
 
@@ -84,16 +85,51 @@ describe('ConflictCard — presentation', () => {
     expect(text).not.toContain('ref_old');
   });
 
-  test('states that previous decisions are preserved', () => {
+  test('states that the earlier decision is kept whichever scope is chosen', () => {
     render(<ConflictCard conflict={conflict()} {...base} />);
-    expect(screen.getByText(/remain in history even when a newer decision supersedes/i)).toBeInTheDocument();
+    expect(screen.getByText(/the earlier decision is kept/i)).toBeInTheDocument();
+    expect(screen.getByText(/never deleted/i)).toBeInTheDocument();
+  });
+
+  test('attributes detection to ClientOS and the decision to the user', () => {
+    render(<ConflictCard conflict={conflict()} {...base} />);
+    expect(screen.getByText(/ClientOS spotted that this contradicts an earlier decision/))
+      .toBeInTheDocument();
+    expect(screen.getByText(/your call, not its/)).toBeInTheDocument();
+  });
+
+  test('never implies the change was applied automatically', () => {
+    const { container } = render(<ConflictCard conflict={conflict()} {...base} />);
+    expect(container.textContent).not.toMatch(/AI (decided|determined|changed)|automatically (applied|updated)/i);
+    expect(container.textContent).toMatch(/stored nothing/i);
+  });
+
+  test('names the project inside the "this project" option, so it cannot read as client-wide', () => {
+    render(<ConflictCard conflict={conflict()} {...base} projectName="Premium Website Redesign" />);
+    const option = screen.getByRole('radio', { name: /this project/i });
+    const label = option.closest('label');
+    expect(label!.textContent).toMatch(/Premium Website Redesign/);
+    expect(label!.textContent).toMatch(/other projects/i);
+  });
+
+  test('only ONE option mentions "this project", so the choice is unambiguous', () => {
+    render(<ConflictCard conflict={conflict()} {...base} projectName="Premium Website Redesign" />);
+    const mentioning = screen.getAllByRole('radio')
+      .filter((r) => /this project/i.test(r.closest('label')?.textContent ?? ''));
+    expect(mentioning).toHaveLength(1);
+  });
+
+  test('the future option is explicit that it reaches beyond the current project', () => {
+    render(<ConflictCard conflict={conflict()} {...base} projectName="Premium Website Redesign" />);
+    const label = screen.getByRole('radio', { name: /all future projects/i }).closest('label');
+    expect(label!.textContent).toMatch(/beyond the one it came from/i);
   });
 });
 
 describe('ConflictCard — scope selection', () => {
   test('offers all three scopes', () => {
     render(<ConflictCard conflict={conflict()} {...base} />);
-    expect(screen.getByRole('radio', { name: /this interaction/i })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /this interaction only/i })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: /this project/i })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: /all future projects/i })).toBeInTheDocument();
   });
@@ -107,7 +143,7 @@ describe('ConflictCard — scope selection', () => {
 
   test('exposes the options as a labelled radiogroup', () => {
     render(<ConflictCard conflict={conflict()} {...base} />);
-    expect(screen.getByRole('radiogroup', { name: /how should this change apply/i })).toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: /how far does this change apply/i })).toBeInTheDocument();
   });
 
   test('the chosen option becomes checked', async () => {
@@ -121,7 +157,7 @@ describe('ConflictCard — scope selection', () => {
   test('scope can be chosen with the keyboard', async () => {
     const user = userEvent.setup();
     render(<ConflictCard conflict={conflict()} {...base} />);
-    const first = screen.getByRole('radio', { name: /this interaction/i });
+    const first = screen.getByRole('radio', { name: /this interaction only/i });
     first.focus();
     expect(first).toHaveFocus();
     await user.keyboard(' ');
@@ -205,7 +241,7 @@ describe('ConflictCard — project context', () => {
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
     // The only radiogroup here is the scope decision, not a project chooser.
     expect(screen.getAllByRole('radiogroup')).toHaveLength(1);
-    expect(screen.getByRole('radiogroup')).toHaveAccessibleName(/how should this change apply/i);
+    expect(screen.getByRole('radiogroup')).toHaveAccessibleName(/how far does this change apply/i);
   });
 
   test('keeps the scope options separate from the project it belongs to', async () => {
@@ -214,7 +250,7 @@ describe('ConflictCard — project context', () => {
     render(<ConflictCard conflict={conflict()} {...base} onResolve={onResolve} projectName="Mobile App" />);
 
     // The scope choice is about reach, and says so.
-    expect(screen.getByText(/how far the preference reaches/i)).toBeInTheDocument();
+    expect(screen.getByText(/the reach of the\s+client's decision/i)).toBeInTheDocument();
 
     // Choosing a scope resolves the conflict; it never changes the project.
     await user.click(screen.getByRole('radio', { name: /all future projects/i }));
@@ -238,7 +274,7 @@ describe('ConflictCard — scope-only confirmation', () => {
         {...base}
       />,
     );
-    expect(screen.getByText('Scope confirmation needed')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /how widely does this apply/i })).toBeInTheDocument();
     expect(screen.queryByText('Previous decision')).not.toBeInTheDocument();
     // The scope decision is still required.
     expect(screen.getByRole('radiogroup')).toBeInTheDocument();
