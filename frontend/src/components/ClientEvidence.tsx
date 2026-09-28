@@ -18,18 +18,34 @@ export function collectEvidence(recommendation: Recommendation): EvidenceItem[] 
   return [...seen.values()];
 }
 
-export function ClientEvidence({ recommendation }: { recommendation: Recommendation }) {
+export function ClientEvidence({
+  recommendation, clientName,
+}: {
+  recommendation: Recommendation;
+  /** Named so the evidence reads as this client's history, not generic context. */
+  clientName?: string;
+}) {
   const evidence = collectEvidence(recommendation);
   const count = evidence.length;
 
   return (
     <section aria-labelledby="client-evidence-heading">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+      <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 id="client-evidence-heading" className="eyebrow">Client evidence</h2>
         <p className="text-xs tabular-nums text-ink-muted">
           {count} client memor{count === 1 ? 'y' : 'ies'} informed this recommendation
         </p>
       </div>
+
+      {/* The bottom of the chain: these are the memories the points above are
+          bound to, which is why the direction says what it says. */}
+      {count > 0 && (
+        <p className="mb-3 max-w-prose text-xs leading-relaxed text-ink-muted">
+          The recalled decisions the points above are bound to — this is where the direction came
+          from{clientName ? `, not from anything ClientOS assumed about ${clientName}` : ''}. Open a
+          memory's provenance to check it against the memory service.
+        </p>
+      )}
 
       {count === 0 ? (
         <div className="rounded-xl border border-dashed border-black/10 px-4 py-6 text-center">

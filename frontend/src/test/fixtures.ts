@@ -39,9 +39,9 @@ export function memory(over: Partial<MemoryItem> = {}): MemoryItem {
     statement: 'The client prefers restrained colours.',
     scope: 'project',
     state: 'valid',
-    tags: [],
     confidence: 0.9,
     sourceQuote: 'restrained colours',
+    tags: ['client:vive-studio', `project:${WEBSITE.slug}`, 'scope:project', 'type:preference'],
     occurredAt: '2026-06-15T10:00:00Z',
     project: { id: WEBSITE.id, slug: WEBSITE.slug, name: WEBSITE.name },
     interaction: {

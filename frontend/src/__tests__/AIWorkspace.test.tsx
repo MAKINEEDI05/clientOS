@@ -410,7 +410,91 @@ describe('AIWorkspace — memory off vs on comparison', () => {
     await generate(user);
     await screen.findByText(HEADING);
     expect(screen.getAllByText(/Grounded in 10 recalled memories/)).not.toHaveLength(0);
-    // Provenance rendering per evidence item is covered in ClientEvidence.test.tsx;
-    // this fixture's recommendation carries no evidence items to render one from.
+    // Real provenance is reachable on the memory-backed answer.
+    expect(screen.getAllByText(/memory provenance/i)).not.toHaveLength(0);
+  });
+});
+
+/**
+ * Memory → recalled decision → evidence → reasoning → recommendation.
+ *
+ * The page presents that chain in reverse (result first), so each link has to say
+ * what it is. The risk being guarded here is a link claiming client history when
+ * recall produced none.
+ */
+describe('AIWorkspace — memory → evidence → reasoning chain', () => {
+  beforeEach(() => {
+    resetServiceMock();
+    sessionStorage.clear();
+  });
+
+  async function generate(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole('button', { name: /generate direction/i }));
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Recommendation' })).toBeInTheDocument());
+  }
+  const toggleMemory = (user: ReturnType<typeof userEvent.setup>) =>
+    user.click(screen.getByRole('checkbox', { name: /client memory/i }));
+
+  test('with memory, the reasoning is labelled as coming from recalled decisions', async () => {
+    const user = userEvent.setup();
+    open();
+    await screen.findAllByText(/10 memories available to this project/);
+    await generate(user);
+
+    expect(await screen.findByText('From recalled client decisions')).toBeInTheDocument();
+    expect(screen.getByText(/How Vive Studio's recorded decisions shaped each point/))
+      .toBeInTheDocument();
+  });
+
+  test('with memory, the chain is stated from recommendation down to its source', async () => {
+    const user = userEvent.setup();
+    open();
+    await screen.findAllByText(/10 memories available to this project/);
+    await generate(user);
+
+    // Top of the chain names the bank it recalled from...
+    expect(await screen.findByText(/Recalled 10 memories from Vive Studio's Hindsight memory bank/))
+      .toBeInTheDocument();
+    // ...and the order of the three links is preserved.
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    const iRec = headings.indexOf('Recommendation');
+    const iWhy = headings.indexOf('Why this direction');
+    const iEv = headings.indexOf('Client evidence');
+    expect(iRec).toBeGreaterThanOrEqual(0);
+    expect(iWhy).toBeGreaterThan(iRec);
+    expect(iEv).toBeGreaterThan(iWhy);
+  });
+
+  test('WITHOUT memory the reasoning is labelled general practice, not client history', async () => {
+    const user = userEvent.setup();
+    open();
+    await screen.findAllByText(/10 memories available to this project/);
+    await toggleMemory(user);
+    await generate(user);
+
+    expect(await screen.findByText('General practice only')).toBeInTheDocument();
+    expect(screen.getByText(/No decision of Vive Studio's informed these\s+points/))
+      .toBeInTheDocument();
+    // The memory-backed label must be absent entirely.
+    expect(screen.queryByText('From recalled client decisions')).not.toBeInTheDocument();
+    expect(screen.queryByText(/recorded decisions shaped each point/)).not.toBeInTheDocument();
+  });
+
+  test('memory ON that recalled nothing makes no "based on memory" claim', async () => {
+    const user = userEvent.setup();
+    open();
+    await screen.findAllByText(/10 memories available to this project/);
+
+    agent.recommend.mockResolvedValueOnce({
+      recommendationId: 'r-empty', memoryUsed: false, memoryCount: 0, hindsightOk: true,
+      summary: 'Nothing was recalled for this request.',
+      items: [{ id: 'i1', text: 'A general point.', rationale: 'r', why: 'w', evidence: [] }],
+      avoid: [], notes: [], caveats: [], model: 'openai/gpt-oss-120b', latencyMs: 100,
+    });
+    await generate(user);
+
+    expect(await screen.findByText('General practice only')).toBeInTheDocument();
+    expect(screen.queryByText('From recalled client decisions')).not.toBeInTheDocument();
   });
 });

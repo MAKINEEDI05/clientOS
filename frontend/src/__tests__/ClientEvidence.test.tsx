@@ -106,6 +106,41 @@ describe('ClientEvidence', () => {
    * against the memory service rather than merely asserted. What matters is that
    * it stays behind a disclosure instead of competing with the decision itself.
    */
+  /**
+   * The chain only reads correctly if each link states what it actually is. These
+   * assert the connective copy follows the real result rather than the intent.
+   */
+  test('names itself as the source the direction came from', () => {
+    render(<ClientEvidence recommendation={rec({ items: [line('a', [ev('m1')])] })} clientName="Vive Studio" />);
+    expect(screen.getByText(/the points above are bound to/i)).toBeInTheDocument();
+    expect(screen.getByText(/not from anything ClientOS assumed about Vive Studio/i))
+      .toBeInTheDocument();
+  });
+
+  test('points at provenance as the way to check it', () => {
+    render(<ClientEvidence recommendation={rec({ items: [line('a', [ev('m1')])] })} />);
+    expect(screen.getByText(/check it against the memory service/i)).toBeInTheDocument();
+  });
+
+  test('with nothing cited it makes NO claim about being the source', () => {
+    const { container } = render(<ClientEvidence recommendation={rec({ memoryUsed: false, memoryCount: 0 })} />);
+    expect(container.textContent).not.toMatch(/the points above are bound to/i);
+    expect(container.textContent).not.toMatch(/where the direction came from/i);
+  });
+
+  test('memory ON but nothing recalled still makes no source claim', () => {
+    const { container } = render(
+      <ClientEvidence recommendation={rec({ memoryUsed: true, items: [line('a', [])] })} />,
+    );
+    expect(container.textContent).not.toMatch(/the points above are bound to/i);
+  });
+
+  test('the client name is optional and omitted cleanly', () => {
+    const { container } = render(<ClientEvidence recommendation={rec({ items: [line('a', [ev('m1')])] })} />);
+    expect(screen.getByText(/the points above are bound to/i)).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/undefined|about \./);
+  });
+
   test('the memory id is available as provenance, not as content', () => {
     render(<ClientEvidence recommendation={rec({
       items: [line('a', [ev('mem_abc123456789', { statement: 'The client prefers muted tones.' })])],

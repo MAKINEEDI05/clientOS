@@ -3,7 +3,7 @@ import {
   CLIENT, CLIENT_WIDE, MOBILE, NORTHWIND_SUMMARY, VIVE_SUMMARY, WEBSITE,
   memory, projectDetail, recommendation,
 } from './fixtures';
-import type { MemoryItem } from '../types/api';
+import type { EvidenceItem, MemoryItem } from '../types/api';
 
 /**
  * Stand-in for the API layer.
@@ -90,19 +90,44 @@ export function resetServiceMock(): void {
     extracted: [], discarded: [], retained: 1, conflicts: [], warnings: [],
   });
 
-  // The response reflects the project and memory setting it was asked for, so a
-  // test can tell whether the right context was used.
+  // The response reflects the project and the memory setting it was asked for, so
+  // a test can tell whether the right context was used.
   agent.recommend.mockImplementation(async (body: {
     projectId: string; useMemory?: boolean;
   }) => {
     const used = body.useMemory !== false;
-    const count = memoriesFor(body.projectId).length;
+    const pool = memoriesFor(body.projectId);
+    const count = pool.length;
+
+    // Evidence mirrors the shape the backend returns: bound to recalled memories
+    // when memory was used, and empty when it was not.
+    const evidence: EvidenceItem[] = used
+      ? pool.slice(0, 2).map((m) => ({
+          memoryId: m.hindsightMemoryId ?? m.id,
+          statement: m.statement,
+          memoryType: m.memoryType,
+          scope: m.scope,
+          sourceLabel: m.sourceLabelDisplay?.toLowerCase().replace(/[^a-z0-9]+/g, '-') ?? null,
+          sourceLabelDisplay: m.sourceLabelDisplay,
+          occurredAt: m.occurredAt,
+          tags: m.tags,
+        }))
+      : [];
+
     return recommendation({
       memoryUsed: used,
       memoryCount: used ? count : 0,
       summary: used
         ? `Grounded direction for ${body.projectId === MOBILE.id ? 'the mobile app' : 'the website'}.`
         : 'A generic direction with no client history.',
+      items: [{
+        id: 'item-1',
+        text: used ? 'Keep the palette restrained.' : 'Use a clear visual hierarchy.',
+        rationale: used ? 'The client has said so before.' : 'General practice.',
+        why: used ? 'The client prefers restrained colours.' : 'General design practice.',
+        evidence,
+      }],
+      avoid: [],
     });
   });
 }

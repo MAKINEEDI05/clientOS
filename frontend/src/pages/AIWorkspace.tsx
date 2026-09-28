@@ -329,79 +329,103 @@ export function AIWorkspace() {
             />
           )}
 
-          {/* 1 — RECOMMENDATION: the dominant element on the page. */}
-          <section aria-labelledby="recommendation-heading">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 id="recommendation-heading" className="eyebrow">Recommendation</h2>
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-[0.6875rem] font-medium ${
-                  result.memoryUsed
-                    ? 'bg-approve-soft text-approve'
-                    : 'bg-caution-soft text-caution'
+          {/* The chain: recommendation ← reasoning ← recalled evidence. Spaced
+              tighter than the sections below it so it reads as one unit. */}
+          <div className="space-y-5">
+            {/* 1 — RECOMMENDATION: the dominant element on the page. */}
+            <section aria-labelledby="recommendation-heading">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 id="recommendation-heading" className="eyebrow">Recommendation</h2>
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-[0.6875rem] font-medium ${
+                    result.memoryUsed
+                      ? 'bg-approve-soft text-approve'
+                      : 'bg-caution-soft text-caution'
+                  }`}
+                >
+                  {result.memoryUsed
+                    ? `Grounded in ${result.memoryCount} recalled memor${result.memoryCount === 1 ? 'y' : 'ies'}`
+                    : 'Memory off'}
+                </span>
+              </div>
+
+              <div
+                className={`mt-3 rounded-2xl border bg-paper px-6 py-6 shadow-card sm:px-8 sm:py-7 ${
+                  result.memoryUsed ? 'border-black/[0.07]' : 'border-caution/25'
                 }`}
               >
-                {result.memoryUsed
-                  ? `Grounded in ${result.memoryCount} recalled memor${result.memoryCount === 1 ? 'y' : 'ies'}`
-                  : 'Memory off'}
-              </span>
-            </div>
+                <p className="font-display text-[1.375rem] leading-[1.55] text-ink sm:text-2xl sm:leading-[1.5]">
+                  {result.summary}
+                </p>
+              </div>
 
-            <div
-              className={`mt-3 rounded-2xl border bg-paper px-6 py-6 shadow-card sm:px-8 sm:py-7 ${
-                result.memoryUsed ? 'border-black/[0.07]' : 'border-caution/25'
-              }`}
-            >
-              <p className="font-display text-[1.375rem] leading-[1.55] text-ink sm:text-2xl sm:leading-[1.5]">
-                {result.summary}
-              </p>
-            </div>
-
-            <p className="mt-2.5 text-sm leading-relaxed text-ink-soft">
-              {result.memoryUsed ? (
-                <>
-                  Recalled {result.memoryCount} memor{result.memoryCount === 1 ? 'y' : 'ies'} from{' '}
-                  {client.name}'s Hindsight memory bank for this request. Open “Why?” on any point
-                  to see the decision it came from.
-                </>
-              ) : (
-                <>
-                  Client memory was off for this request, so no previous decision from{' '}
-                  {client.name} was recalled or used. This direction is generic.
-                </>
-              )}
-            </p>
-          </section>
-
-          {/* 2 — WHY THIS DIRECTION */}
-          {(result.items.length > 0 || result.avoid.length > 0) && (
-            <section aria-labelledby="why-heading">
-              <h2 id="why-heading" className="eyebrow">Why this direction</h2>
-
-              <div className="mt-3 rounded-2xl border border-black/[0.07] bg-paper px-5 py-4 shadow-card">
-                {result.items.length > 0 && (
-                  <ul className="space-y-3.5">
-                    {result.items.map((line) => (
-                      <RecommendationCard key={line.id} line={line} variant="recommend" />
-                    ))}
-                  </ul>
+              <p className="mt-2.5 text-sm leading-relaxed text-ink-soft">
+                {result.memoryUsed ? (
+                  <>
+                    Recalled {result.memoryCount} memor{result.memoryCount === 1 ? 'y' : 'ies'} from{' '}
+                    {client.name}'s Hindsight memory bank for this request. Open “Why?” on any point
+                    to see the decision it came from.
+                  </>
+                ) : (
+                  <>
+                    Client memory was off for this request, so no previous decision from{' '}
+                    {client.name} was recalled or used. This direction is generic.
+                  </>
                 )}
+              </p>
+            </section>
 
-                {result.avoid.length > 0 && (
-                  <div className={result.items.length > 0 ? 'mt-5 border-t border-black/[0.06] pt-4' : ''}>
-                    <p className="eyebrow mb-3">Avoid</p>
+            {/* 2 — WHY THIS DIRECTION */}
+            {(result.items.length > 0 || result.avoid.length > 0) && (
+              <section aria-labelledby="why-heading">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 id="why-heading" className="eyebrow">Why this direction</h2>
+                  {/* Accurate either way: the label follows what recall returned. */}
+                  <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-ink-muted">
+                    {result.memoryUsed ? 'From recalled client decisions' : 'General practice only'}
+                  </span>
+                </div>
+                <p className="mt-1.5 max-w-prose text-xs leading-relaxed text-ink-muted">
+                  {result.memoryUsed ? (
+                    <>
+                      How {client.name}'s recorded decisions shaped each point. A point memory does
+                      not cover is marked <span className="font-medium">General practice</span> rather
+                      than attributed to the client.
+                    </>
+                  ) : (
+                    <>
+                      General design practice only. No decision of {client.name}'s informed these
+                      points, so none of them cites one.
+                    </>
+                  )}
+                </p>
+
+                <div className="mt-3 rounded-2xl border border-black/[0.07] bg-paper px-5 py-4 shadow-card">
+                  {result.items.length > 0 && (
                     <ul className="space-y-3.5">
-                      {result.avoid.map((line) => (
-                        <RecommendationCard key={line.id} line={line} variant="avoid" />
+                      {result.items.map((line) => (
+                        <RecommendationCard key={line.id} line={line} variant="recommend" />
                       ))}
                     </ul>
-                  </div>
-                )}
-              </div>
-            </section>
-          )}
+                  )}
 
-          {/* 3 — CLIENT EVIDENCE */}
-          <ClientEvidence recommendation={result} />
+                  {result.avoid.length > 0 && (
+                    <div className={result.items.length > 0 ? 'mt-5 border-t border-black/[0.06] pt-4' : ''}>
+                      <p className="eyebrow mb-3">Avoid</p>
+                      <ul className="space-y-3.5">
+                        {result.avoid.map((line) => (
+                          <RecommendationCard key={line.id} line={line} variant="avoid" />
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {/* 3 — CLIENT EVIDENCE: the bottom of the chain. */}
+            <ClientEvidence recommendation={result} clientName={client.name} />
+          </div>
 
           {result.notes.length > 0 && (
             <section aria-labelledby="notes-heading">
