@@ -20,6 +20,7 @@ import type { MemoryAvailability } from '../hooks/useMemoryHealth';
 export function ClientContextBar({
   clientName, projectName, projectControl, memoryCount, relevant,
   interactionCount, memoryAvailability, memoryEnabled = true, bankId,
+  showClientName = true,
 }: {
   clientName: string;
   projectName?: string | null;
@@ -42,6 +43,11 @@ export function ClientContextBar({
    * headline. Never a credential — the bank id is not a secret.
    */
   bankId?: string | null;
+  /**
+   * False where the page already heads with the client's name, so it is not
+   * announced twice. The name is still used in the status line, which needs it.
+   */
+  showClientName?: boolean;
 }) {
   // Four display states. "Reachable but switched off" is distinct from "active"
   // — claiming active there would contradict the switch. And "still checking" is
@@ -57,13 +63,25 @@ export function ClientContextBar({
   return (
     <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 border-b border-black/[0.08] pb-4">
       <div className="min-w-0">
-        <h1 className="font-display text-[1.75rem] leading-tight tracking-tight text-ink">
-          {clientName}
-        </h1>
+        {showClientName && (
+          <h1 className="font-display text-[1.75rem] leading-tight tracking-tight text-ink">
+            {clientName}
+          </h1>
+        )}
         {projectControl ? (
-          <div className="mt-2">{projectControl}</div>
+          <div className={showClientName ? 'mt-2' : ''}>{projectControl}</div>
         ) : (
-          projectName && <p className="mt-0.5 text-sm text-ink-muted">{projectName}</p>
+          projectName && (
+            <p
+              className={
+                showClientName
+                  ? 'mt-0.5 text-sm text-ink-muted'
+                  : 'font-display text-lg leading-tight tracking-tight text-ink'
+              }
+            >
+              {projectName}
+            </p>
+          )
         )}
       </div>
 

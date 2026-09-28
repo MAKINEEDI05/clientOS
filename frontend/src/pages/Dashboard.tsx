@@ -28,10 +28,14 @@ export function Dashboard() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="font-display text-2xl tracking-tight text-ink">Clients</h1>
-          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ink-muted">
-            Every client carries its own decision memory. Open a client to ask ClientOS for
-            direction grounded in what they have already approved and rejected.
+          <p className="eyebrow">Client decision memory</p>
+          <h1 className="mt-1 max-w-xl font-display text-2xl leading-snug tracking-tight text-ink">
+            Never lose the reason behind a client decision.
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
+            ClientOS remembers what each client approved, rejected, required and changed their mind
+            about, then brings that history into the next piece of work — so your team does not
+            repeat an idea the client already turned down.
           </p>
         </div>
         {hasClients && (
@@ -47,11 +51,19 @@ export function Dashboard() {
       {data && !hasClients && <Onboarding onCreate={() => setDialogOpen(true)} />}
 
       {data && hasClients && (
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {data.clients.map((client) => (
-            <ClientCard key={client.id} client={client} />
-          ))}
-        </ul>
+        <section aria-labelledby="clients-heading">
+          <div className="mb-2.5 flex flex-wrap items-baseline justify-between gap-3">
+            <h2 id="clients-heading" className="eyebrow">Clients</h2>
+            <p className="text-xs text-ink-muted">
+              Each client has their own memory. Nothing crosses between them.
+            </p>
+          </div>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {data.clients.map((client) => (
+              <ClientCard key={client.id} client={client} />
+            ))}
+          </ul>
+        </section>
       )}
 
       <AddClientDialog
@@ -136,7 +148,7 @@ function ClientCard({ client }: { client: ClientSummary }) {
         ) : (
           <>
             <dl className="mt-3.5 grid grid-cols-4 gap-2 border-t border-black/[0.06] pt-3">
-              <Stat label="Memories" value={memoryCount} emphasis />
+              <Stat label="Decisions" value={memoryCount} emphasis />
               <Stat label="Preferences" value={client.counts.preference} />
               <Stat label="Rejections" value={client.counts.rejection} />
               <Stat label="Approvals" value={client.counts.approval} />

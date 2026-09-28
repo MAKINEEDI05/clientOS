@@ -106,10 +106,27 @@ export function ClientWorkspace() {
             onAdd={() => setProjectDialogOpen(true)}
           />
 
+          <p className="max-w-2xl text-xs leading-relaxed text-ink-muted">
+            {projectList.length > 1 ? (
+              <>
+                {projectList.length} projects share {client.name}'s memory. Decisions recorded on a
+                project stay with that project; client-wide decisions can inform any of them.
+                Switching project changes what ClientOS draws on.
+              </>
+            ) : (
+              <>
+                Decisions recorded here stay with this project. Client-wide decisions can inform any
+                of {client.name}'s projects, including ones added later.
+              </>
+            )}
+          </p>
+
           {activeProject && (
             <ClientContextBar
               clientName={client.name}
               projectName={activeProject.name}
+              // The page already heads with the client; the bar leads with the project.
+              showClientName={false}
               memoryCount={projectState.data?.memoryCount ?? activeProject.memoryCount}
               relevant={projectState.data ? relevant : undefined}
               interactionCount={activeProject.interactionCount}
@@ -177,9 +194,12 @@ export function ClientWorkspace() {
               {memory && (
                 <>
                   <p className="text-xs leading-relaxed text-ink-muted">
-                    What ClientOS currently holds for{' '}
-                    <span className="font-medium text-ink-soft">{activeProject?.name}</span> — its
-                    own decisions plus {client.name}'s client-wide preferences.
+                    What ClientOS holds for{' '}
+                    <span className="font-medium text-ink-soft">{activeProject?.name}</span>: its own
+                    decisions, plus the ones marked{' '}
+                    <span className="font-medium text-ink-soft">All projects</span> that belong to{' '}
+                    {client.name} rather than to any single project. Which of them a given
+                    recommendation uses depends on the question asked.
                   </p>
                   <MemoryPanel
                     title="Current preferences"

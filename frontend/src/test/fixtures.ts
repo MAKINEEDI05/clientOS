@@ -1,5 +1,6 @@
 import type {
-  ClientDetail, Conflict, MemoryItem, ProjectDetail, ProjectSummary, Recommendation,
+  ClientDetail, ClientSummary, Conflict, MemoryItem, ProjectDetail, ProjectSummary,
+  Recommendation,
 } from '../types/api';
 
 /**
@@ -127,3 +128,25 @@ export function recommendation(over: Partial<Recommendation> = {}): Recommendati
     ...over,
   };
 }
+
+const NO_COUNTS = {
+  preference: 0, approval: 0, rejection: 0, constraint: 0,
+  decision: 0, outcome: 0, preference_change: 0,
+};
+
+/** Dashboard rows, matching the seeded demo shape. */
+export const VIVE_SUMMARY: ClientSummary = {
+  id: CLIENT.client.id, slug: CLIENT.client.slug, name: CLIENT.client.name,
+  industry: 'Design', context: 'Premium studio repositioning upmarket.',
+  projectCount: 2, interactionCount: 10, openConflicts: 0,
+  lastInteractionAt: '2026-09-20T10:00:00Z',
+  counts: { ...NO_COUNTS, preference: 5, approval: 2, rejection: 3, constraint: 1 },
+};
+
+export const NORTHWIND_SUMMARY: ClientSummary = {
+  id: 'c-northwind', slug: 'northwind-labs', name: 'Northwind Labs',
+  industry: 'SaaS', context: 'Marketing site refresh.',
+  projectCount: 1, interactionCount: 1, openConflicts: 0,
+  lastInteractionAt: '2026-09-01T10:00:00Z',
+  counts: { ...NO_COUNTS, preference: 1 },
+};

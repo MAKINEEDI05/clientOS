@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import {
-  CLIENT, CLIENT_WIDE, MOBILE, WEBSITE, memory, projectDetail, recommendation,
+  CLIENT, CLIENT_WIDE, MOBILE, NORTHWIND_SUMMARY, VIVE_SUMMARY, WEBSITE,
+  memory, projectDetail, recommendation,
 } from './fixtures';
 import type { MemoryItem } from '../types/api';
 
@@ -61,6 +62,7 @@ export function resetServiceMock(): void {
     tenant: 'demo', llmConfigured: true, model: 'openai/gpt-oss-120b', demoStage: 'history',
   });
 
+  clients.list.mockResolvedValue({ clients: [VIVE_SUMMARY, NORTHWIND_SUMMARY] });
   clients.get.mockResolvedValue(CLIENT);
   clients.conflicts.mockResolvedValue({ conflicts: [] });
   // Every project's memory, which is what the all-client timeline view asks for.

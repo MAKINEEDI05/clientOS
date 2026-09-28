@@ -6,8 +6,8 @@ vi.mock('../services/clientos', () => import('../test/serviceMock'));
 
 import { ClientWorkspace } from '../pages/ClientWorkspace';
 import { renderRoute } from '../test/renderRoute';
-import { projects, resetServiceMock } from '../test/serviceMock';
-import { MOBILE, WEBSITE } from '../test/fixtures';
+import { clients, projects, resetServiceMock } from '../test/serviceMock';
+import { CLIENT, MOBILE, WEBSITE } from '../test/fixtures';
 
 const ROUTE = '/clients/:clientId';
 
@@ -88,5 +88,51 @@ describe('ClientWorkspace — feedback destination', () => {
       source: 'revision',
       content: 'Keep the navigation shallow.',
     });
+  });
+});
+
+/**
+ * One client, one memory, several projects. The workspace has to make the
+ * boundary legible without naming any project in the component itself.
+ */
+describe('ClientWorkspace — multi-project memory story', () => {
+  beforeEach(resetServiceMock);
+
+  test('says the client’s projects share one memory, using the real count and name', async () => {
+    open();
+    expect(await screen.findByText(/2 projects share Vive Studio's memory/)).toBeInTheDocument();
+  });
+
+  test('states the boundary in behaviour, not architecture', async () => {
+    open();
+    expect(await screen.findByText(/Decisions recorded on a\s+project stay with that project/))
+      .toBeInTheDocument();
+    expect(screen.getByText(/client-wide decisions can inform any of them/i)).toBeInTheDocument();
+  });
+
+  test('exposes no memory-layer jargon', async () => {
+    const { container } = open();
+    await screen.findByText(/2 projects share Vive Studio's memory/);
+    expect(container.textContent).not.toMatch(/any_strict|tag group|bank filter|SQL|scope tag/i);
+  });
+
+  test('a single-project client gets wording that still explains the boundary', async () => {
+    clients.get.mockResolvedValue({ ...CLIENT, projects: [WEBSITE] });
+    open();
+    expect(await screen.findByText(/Decisions recorded here stay with this project/))
+      .toBeInTheDocument();
+    expect(screen.getByText(/including ones added later/)).toBeInTheDocument();
+  });
+
+  test('does not promise that every client-wide decision reaches every answer', async () => {
+    open();
+    await screen.findByText(/2 projects share Vive Studio's memory/);
+    expect(screen.getByText(/depends on the question asked/)).toBeInTheDocument();
+  });
+
+  test('switching project is described as changing what ClientOS draws on', async () => {
+    open();
+    expect(await screen.findByText(/Switching project changes what ClientOS draws on/))
+      .toBeInTheDocument();
   });
 });
