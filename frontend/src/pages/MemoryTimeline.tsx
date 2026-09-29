@@ -7,7 +7,9 @@ import { MemoryCard } from '../components/MemoryCard';
 import { ProjectContextSelector } from '../components/ProjectContextSelector';
 import { ConfirmDialog } from '../components/Modal';
 import { EmptyState, ErrorState, LoadingState } from '../components/States';
-import { ClientAvatar, handleTabListKeyDown } from '../components/ui';
+import { ClientIdentity, handleTabListKeyDown } from '../components/ui';
+import { Icon } from '../components/Icon';
+import { typeStyle } from '../components/Badges';
 import { MEMORY_TYPE_OPTIONS } from '../data/options';
 import { isClient } from '../lib/identity';
 import type { MemoryItem, MemoryType } from '../types/api';
@@ -106,15 +108,15 @@ export function MemoryTimeline() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <header className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-        <div className="flex min-w-0 flex-1 items-start gap-3.5">
-          <ClientAvatar name={clientName} size="lg" />
-          <div className="min-w-0">
-            <h1 className="page-title">{clientName}</h1>
-            <p className="mt-1 text-sm text-ink-muted">
-              Every decision this client has made, in order — including the ones that changed.
-            </p>
-          </div>
+      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="min-w-0 flex-1">
+          <ClientIdentity name={clientName} as="h1" />
+          <p className="mt-3 font-display text-[1.625rem] font-medium leading-tight tracking-[-0.015em] text-ink sm:text-[1.875rem]">
+            Memory timeline
+          </p>
+          <p className="mt-1 text-[0.8125rem] text-ink-muted">
+            Every decision this client has made, in order — including the ones that changed.
+          </p>
         </div>
 
         {projectList.length > 0 && (
@@ -254,22 +256,28 @@ export function MemoryTimeline() {
               {items.length} {items.length === 1 ? 'memory' : 'memories'}
             </span>
           </div>
-          <ol className="relative space-y-3 border-l border-line pl-5 sm:ml-1.5 sm:pl-6">
+          {/* The rail: each node is the kind of decision, so the history reads as a
+              sequence of events — a superseded one visibly recedes, a retired one
+              is hollow. */}
+          <ol className="relative ml-3.5 space-y-2.5 border-l border-line pl-7">
             {items.map((m) => {
               const wasReplaced = supersededIds.has(m.id) || m.supersededBy !== null;
               const current = m.state === 'valid' && !wasReplaced;
+              const node = typeStyle(m.memoryType);
               return (
                 <li key={m.id} className="relative">
                   <span
                     aria-hidden="true"
-                    className={`absolute -left-[1.6875rem] top-5 h-2.5 w-2.5 rounded-full ring-4 ring-canvas sm:-left-[1.9375rem] ${
-                      current
-                        ? 'bg-memory-bright'
+                    className={`absolute left-[-41.5px] top-3 grid h-[1.625rem] w-[1.625rem] place-items-center rounded-full ring-4 ring-canvas ${
+                      m.state === 'invalidated'
+                        ? 'border border-line-strong bg-canvas text-ink-faint'
                         : m.state === 'superseded'
-                          ? 'bg-caution/70'
-                          : 'border border-ink-faint bg-canvas'
+                          ? `${node.tile} opacity-55`
+                          : node.tile
                     }`}
-                  />
+                  >
+                    <Icon name={node.icon} className="h-3.5 w-3.5" strokeWidth={2} />
+                  </span>
                   <MemoryCard
                     memory={m}
                     current={current}

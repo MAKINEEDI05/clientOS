@@ -1,4 +1,4 @@
-import type { KeyboardEvent, ReactNode } from 'react';
+import type { KeyboardEvent } from 'react';
 
 /**
  * Small presentational primitives shared across screens, so identity, status
@@ -31,6 +31,28 @@ export function ClientAvatar({ name, size = 'md' }: { name: string; size?: 'sm' 
   );
 }
 
+/**
+ * The client, named once at the top of every client screen: monogram, name, and
+ * (on wide screens) the client's own context line. The name is the heading; the
+ * context stays outside it so the heading remains short.
+ */
+export function ClientIdentity({
+  name, context, as: Tag = 'p',
+}: { name: string; context?: string | null; as?: 'h1' | 'p' }) {
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      <ClientAvatar name={name} size="sm" />
+      <Tag className="shrink-0 text-sm font-semibold tracking-[-0.005em] text-ink">{name}</Tag>
+      {context && (
+        <p className="hidden min-w-0 truncate text-[0.8125rem] text-ink-muted md:block" title={context}>
+          <span aria-hidden="true" className="mr-1.5 text-ink-faint">·</span>
+          {context}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export type StatusTone = 'memory' | 'off' | 'checking' | 'bad';
 
 /**
@@ -51,30 +73,6 @@ export function StatusDot({ tone, className = '' }: { tone: StatusTone; classNam
       )}
       <span className={`relative inline-flex h-2 w-2 rounded-full ${fill}`} />
     </span>
-  );
-}
-
-/** Title row for a section: heading on the left, optional detail on the right. */
-export function SectionHeader({
-  title, id, description, aside, as: Tag = 'h2', className = '',
-}: {
-  title: ReactNode;
-  id?: string;
-  description?: ReactNode;
-  aside?: ReactNode;
-  as?: 'h2' | 'h3';
-  className?: string;
-}) {
-  return (
-    <div className={className}>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <Tag id={id} className="section-title">{title}</Tag>
-        {aside}
-      </div>
-      {description && (
-        <p className="mt-1 max-w-prose text-[0.8125rem] leading-relaxed text-ink-muted">{description}</p>
-      )}
-    </div>
   );
 }
 

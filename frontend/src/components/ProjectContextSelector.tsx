@@ -45,7 +45,7 @@ export function ProjectContextSelector({
         />
         <select
           id={id}
-          className="select w-full truncate py-2 pl-9 text-[0.9375rem] font-medium sm:min-w-[16rem]"
+          className="select w-full truncate py-2 pl-9 text-[0.9375rem] font-semibold tracking-[-0.005em] sm:min-w-[17rem]"
           value={active?.slug ?? ''}
           onChange={(e) => onSelect(e.target.value)}
         >

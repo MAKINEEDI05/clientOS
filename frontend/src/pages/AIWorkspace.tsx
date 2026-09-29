@@ -371,6 +371,7 @@ export function AIWorkspace() {
                   className={`badge gap-1.5 px-2 py-1 ${
                     result.memoryUsed ? 'badge-memory' : 'border border-line-strong bg-paper-sunken text-ink-soft'
                   }`}
+                  title={result.memoryUsed ? 'Memory items Hindsight recalled for this request' : undefined}
                 >
                   {result.memoryUsed ? (
                     <Icon name="layers" className="h-3 w-3" strokeWidth={2.25} />
@@ -396,12 +397,27 @@ export function AIWorkspace() {
                   name={result.memoryUsed ? 'layers' : 'info'}
                   className={`mt-0.5 h-4 w-4 ${result.memoryUsed ? 'text-memory' : 'text-ink-muted'}`}
                 />
-                <p className="text-[0.8125rem] leading-relaxed text-ink-soft">
+                <div className="text-[0.8125rem] leading-relaxed text-ink-soft">
                   {result.memoryUsed ? (
                     <>
-                      Recalled {result.memoryCount} memor{result.memoryCount === 1 ? 'y' : 'ies'} from{' '}
-                      {client.name}'s Hindsight memory bank for this request. Open “Why?” on any point
-                      to see the decision it came from.
+                      <p>
+                        Recalled {result.memoryCount} memor{result.memoryCount === 1 ? 'y' : 'ies'} from{' '}
+                        {client.name}'s Hindsight memory bank for this request. Open “Why?” on any point
+                        to see the decision it came from.
+                      </p>
+                      {/* Two real, different numbers. "Available" counts the decisions
+                          ClientOS has recorded; "recalled" counts the memory items
+                          Hindsight returned for this request, and Hindsight stores what
+                          it retains as extracted facts — one decision can become several.
+                          Said only when the two actually differ. */}
+                      {memoryCount !== null && memoryCount !== result.memoryCount && (
+                        <p className="mt-1 text-xs text-ink-muted">
+                          Recalled memories are the facts Hindsight returned for this request — one
+                          recorded decision can be stored as several — so this differs from the{' '}
+                          {memoryCount} recorded decision{memoryCount === 1 ? '' : 's'} available to{' '}
+                          {activeProject.name}.
+                        </p>
+                      )}
                     </>
                   ) : (
                     <>
@@ -409,7 +425,7 @@ export function AIWorkspace() {
                       {client.name} was recalled or used. This direction is generic.
                     </>
                   )}
-                </p>
+                </div>
               </div>
             </section>
 

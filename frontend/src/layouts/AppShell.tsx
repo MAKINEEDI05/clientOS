@@ -4,6 +4,7 @@ import { MemoryStatusBadge } from '../components/MemoryStatusBadge';
 import { Icon, Logo, type IconName } from '../components/Icon';
 import { ClientAvatar } from '../components/ui';
 import { useAsync } from '../hooks/useAsync';
+import { MemoryHealthProvider } from '../hooks/useMemoryHealth';
 import { clients } from '../services/clientos';
 import type { ClientSummary } from '../types/api';
 
@@ -41,52 +42,63 @@ export function AppShell() {
   );
 
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[15.5rem_minmax(0,1fr)]">
-      <a
-        href="#main"
-        className="sr-only-focusable fixed left-3 top-3 z-[60] rounded-lg bg-ink px-3 py-2 text-sm text-white"
-      >
-        Skip to content
-      </a>
+    // One memory-health probe for the header and every page beneath it.
+    <MemoryHealthProvider>
+      <div className="min-h-dvh lg:grid lg:grid-cols-[15.5rem_minmax(0,1fr)]">
+        <a
+          href="#main"
+          className="sr-only-focusable fixed left-3 top-3 z-[60] rounded-lg bg-ink px-3 py-2 text-sm text-white"
+        >
+          Skip to content
+        </a>
 
-      <aside className="sticky top-0 hidden h-dvh border-r border-line lg:block">{sidebar}</aside>
+        <aside className="sticky top-0 hidden h-dvh border-r border-line lg:block">{sidebar}</aside>
 
-      <MobileDrawer open={navOpen} onClose={() => setNavOpen(false)}>{sidebar}</MobileDrawer>
+        <MobileDrawer open={navOpen} onClose={() => setNavOpen(false)}>{sidebar}</MobileDrawer>
 
-      <div className="flex min-w-0 flex-col">
-        <header className="sticky top-0 z-30 border-b border-line bg-canvas/90 backdrop-blur-md">
-          <div className="flex h-14 items-center gap-2 px-4 sm:gap-3 sm:px-6 lg:px-8">
-            <button
-              type="button"
-              className="btn-ghost btn-icon -ml-1.5 lg:hidden"
-              onClick={() => setNavOpen(true)}
-              aria-label="Open navigation"
-              aria-expanded={navOpen}
-              aria-controls="mobile-navigation"
-            >
-              <Icon name="menu" className="h-5 w-5" />
-            </button>
-            <Link to="/" className="flex items-center gap-2 rounded-md lg:hidden">
-              <Logo className="h-6 w-6" />
-              <span className="text-[0.9375rem] font-semibold tracking-tight text-ink">ClientOS</span>
-            </Link>
-            <span aria-hidden="true" className="mx-1 hidden h-5 w-px bg-line-strong sm:block lg:hidden" />
+        <div className="flex min-w-0 flex-col">
+          <header className="sticky top-0 z-30 border-b border-line bg-canvas/90 backdrop-blur-md">
+            <div className="flex h-12 items-center gap-2 px-4 sm:gap-3 sm:px-6 lg:h-[3.25rem] lg:px-8">
+              <button
+                type="button"
+                className="btn-ghost btn-icon -ml-1.5 lg:hidden"
+                onClick={() => setNavOpen(true)}
+                aria-label="Open navigation"
+                aria-expanded={navOpen}
+                aria-controls="mobile-navigation"
+              >
+                <Icon name="menu" className="h-5 w-5" />
+              </button>
+              <Link to="/" className="flex items-center gap-2 rounded-md lg:hidden">
+                <Logo className="h-6 w-6" />
+                <span className="text-[0.9375rem] font-semibold tracking-tight text-ink">ClientOS</span>
+              </Link>
+              <span aria-hidden="true" className="mx-1 hidden h-5 w-px bg-line-strong sm:block lg:hidden" />
 
-            <Breadcrumbs client={activeClient} clientId={clientId} />
+              <Breadcrumbs client={activeClient} clientId={clientId} />
 
-            <div className="ml-auto min-w-0">
-              <MemoryStatusBadge />
+              {/* Desktop: the client's sections sit in the same row as the breadcrumb. */}
+              {clientId && (
+                <>
+                  <span aria-hidden="true" className="ml-1 hidden h-5 w-px bg-line-strong lg:block" />
+                  <ClientSectionNav clientId={clientId} inline />
+                </>
+              )}
+
+              <div className="ml-auto min-w-0">
+                <MemoryStatusBadge />
+              </div>
             </div>
-          </div>
 
-          {clientId && <ClientSectionNav clientId={clientId} />}
-        </header>
+            {clientId && <ClientSectionNav clientId={clientId} />}
+          </header>
 
-        <main id="main" tabIndex={-1} className="flex-1 px-4 pb-16 pt-6 outline-none sm:px-6 sm:pt-8 lg:px-8">
-          <Outlet />
-        </main>
+          <main id="main" tabIndex={-1} className="flex-1 px-4 pb-16 pt-5 outline-none sm:px-6 sm:pt-6 lg:px-8">
+            <Outlet />
+          </main>
+        </div>
       </div>
-    </div>
+    </MemoryHealthProvider>
   );
 }
 
@@ -201,40 +213,62 @@ function Breadcrumbs({ client, clientId }: { client: ClientSummary | undefined; 
       </p>
     );
   }
-  const section = [...SECTIONS].reverse().find((s) => s.path && pathname.endsWith(s.path)) ?? SECTIONS[0]!;
-
+  // Subtle: the page itself names the client and project. The section is named
+  // by the tabs beside this, so it is not repeated here.
   return (
     <nav aria-label="Breadcrumb" className="hidden min-w-0 sm:block sm:pl-1 lg:pl-0">
-      <ol className="flex min-w-0 items-center gap-1.5 text-sm">
+      <ol className="flex min-w-0 items-center gap-1.5 text-[0.8125rem]">
         <li className="shrink-0">
           <Link to="/" className="rounded text-ink-muted transition-colors hover:text-ink">Clients</Link>
         </li>
         <li aria-hidden="true" className="text-ink-faint">/</li>
-        <li className="min-w-0">
+        <li className="min-w-0" aria-current="page">
           {client ? (
-            <span className="flex min-w-0 items-center gap-1.5">
-              <ClientAvatar name={client.name} size="sm" />
-              <span className="truncate font-medium text-ink">{client.name}</span>
-            </span>
+            <span className="block truncate font-medium text-ink-soft">{client.name}</span>
           ) : (
             <span className="skeleton inline-block h-4 w-24 align-middle" />
           )}
         </li>
-        <li aria-hidden="true" className="text-ink-faint">/</li>
-        <li className="shrink-0 text-ink-muted" aria-current="page">{section.label}</li>
       </ol>
     </nav>
   );
 }
 
-function ClientSectionNav({ clientId }: { clientId: string }) {
+function ClientSectionNav({ clientId, inline = false }: { clientId: string; inline?: boolean }) {
   const [params] = useSearchParams();
   const project = params.get('project');
   // Keep the project in context when moving between this client's screens.
   const search = project ? `?project=${encodeURIComponent(project)}` : '';
 
+  if (inline) {
+    return (
+      <nav aria-label="Client sections" className="-mb-px hidden self-stretch lg:flex">
+        <ul className="flex gap-5">
+          {SECTIONS.map((s) => (
+            <li key={s.path} className="flex">
+              <NavLink
+                to={`/clients/${clientId}${s.path}${search}`}
+                end={s.end}
+                className={({ isActive }) =>
+                  `flex items-center gap-1.5 border-b-2 pt-0.5 text-[0.8125rem] font-medium transition-colors ${
+                    isActive
+                      ? 'border-ink text-ink'
+                      : 'border-transparent text-ink-muted hover:border-line-strong hover:text-ink'
+                  }`
+                }
+              >
+                <Icon name={s.icon} className="h-4 w-4" />
+                {s.label}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    );
+  }
+
   return (
-    <nav aria-label="Client sections" className="px-4 sm:px-6 lg:px-8">
+    <nav aria-label="Client sections" className="px-4 sm:px-6 lg:hidden">
       <ul className="-mb-px flex gap-1 sm:gap-4">
         {SECTIONS.map((s) => (
           <li key={s.path} className="min-w-0 flex-1 sm:flex-none">

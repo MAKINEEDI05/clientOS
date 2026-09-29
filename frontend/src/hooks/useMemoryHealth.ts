@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { createContext, createElement, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { health } from '../services/clientos';
 import type { HealthStatus } from '../types/api';
 
@@ -35,11 +35,35 @@ export interface MemoryHealth {
 }
 
 /**
+ * One probe for the whole app.
+ *
+ * The shell and the page below it each used to run their own probe, so a freshly
+ * opened page could still say "checking" while the header already said
+ * "connected". The shell now owns the single probe and shares its verdict; every
+ * surface reads the same state, so they can never disagree.
+ */
+const MemoryHealthContext = createContext<MemoryHealth | null>(null);
+
+export function MemoryHealthProvider({ children }: { children: ReactNode }) {
+  const health = useMemoryHealthProbe(30_000, true);
+  return createElement(MemoryHealthContext.Provider, { value: health }, children);
+}
+
+/**
  * Poll the memory-layer health so the UI can always tell the truth about whether
  * Hindsight is reachable. This is the mechanism that stops any screen implying
  * memory worked when it did not.
+ *
+ * Inside the app shell this returns the shared verdict. Outside it (a page or
+ * component rendered on its own) it runs its own probe with identical semantics.
  */
 export function useMemoryHealth(intervalMs = 30_000): MemoryHealth {
+  const shared = useContext(MemoryHealthContext);
+  const own = useMemoryHealthProbe(intervalMs, shared === null);
+  return shared ?? own;
+}
+
+function useMemoryHealthProbe(intervalMs: number, enabled: boolean): MemoryHealth {
   const [status, setStatus] = useState<HealthStatus | null>(null);
   const [availability, setAvailability] = useState<MemoryAvailability>('checking');
   // Which layer failed. Held back until we actually commit to `unavailable`, so a
@@ -48,6 +72,8 @@ export function useMemoryHealth(intervalMs = 30_000): MemoryHealth {
   const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
+    // A shared verdict is being used instead; this instance does not probe.
+    if (!enabled) return;
     let active = true;
     let confirmTimer: number | undefined;
     let consecutiveFailures = 0;
@@ -95,7 +121,7 @@ export function useMemoryHealth(intervalMs = 30_000): MemoryHealth {
       window.clearInterval(poll);
       window.clearTimeout(confirmTimer);
     };
-  }, [intervalMs, nonce]);
+  }, [intervalMs, nonce, enabled]);
 
   const refresh = useCallback(() => setNonce((n) => n + 1), []);
 

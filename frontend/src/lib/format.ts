@@ -25,3 +25,14 @@ export function formatSource(source: string | null): string {
   if (!source) return '';
   return source.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
+
+/** Compact date for dense lists: "Sep 28", with the year only when it is not this year. */
+export function formatShortDate(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleDateString(undefined, sameYear
+    ? { day: 'numeric', month: 'short' }
+    : { day: 'numeric', month: 'short', year: 'numeric' });
+}
