@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAsync, useMutation } from '../hooks/useAsync';
 import { useActiveProject } from '../hooks/useActiveProject';
 import { useMemoryHealth } from '../hooks/useMemoryHealth';
@@ -7,6 +7,7 @@ import { clients, projects } from '../services/clientos';
 import { MemoryPanel } from '../components/MemoryPanel';
 import { AddInteractionForm } from '../components/AddInteractionForm';
 import { AddProjectDialog } from '../components/AddProjectDialog';
+import { DeleteClientDialog } from '../components/DeleteClientDialog';
 import { ProjectSwitcher } from '../components/ProjectSwitcher';
 import { FeedbackResult } from '../components/FeedbackResult';
 import { MemoryStatus } from '../components/MemoryStatus';
@@ -16,6 +17,8 @@ import { Icon, type IconName } from '../components/Icon';
 import { ClientIdentity } from '../components/ui';
 import type { PanelTone } from '../components/MemoryPanel';
 import { formatShortDate } from '../lib/format';
+import { forgetDirection } from '../lib/lastDirection';
+import { forgetMemoryOff } from '../lib/memoryComparison';
 import { flattenProjectMemory, splitRelevant } from '../lib/memoryCounts';
 import { isClient } from '../lib/identity';
 import type { InteractionSource, ProjectDetail, SubmitInteractionResult } from '../types/api';
@@ -32,6 +35,8 @@ export function ClientWorkspace() {
   const { clientId = '' } = useParams();
   const [lastResult, setLastResult] = useState<SubmitInteractionResult | null>(null);
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const navigate = useNavigate();
   const { availability: memoryAvailability } = useMemoryHealth();
 
   const clientState = useAsync((s) => clients.get(clientId, s), [clientId]);
@@ -63,6 +68,22 @@ export function ClientWorkspace() {
       return result;
     },
   );
+
+  // Permanent deletion of this client. On success nothing of it may linger: its
+  // session-scoped context is forgotten, and navigation REPLACES this URL so Back
+  // cannot return to a client that no longer exists. The dashboard and sidebar
+  // load the client list afresh on arrival.
+  const removeClient = useMutation(async (token: string) => {
+    const data = clientData!;
+    const result = await clients.remove(data.client.id, token);
+    for (const p of data.projects) {
+      forgetDirection(p.id);
+      forgetMemoryOff(data.client.id, p.id);
+    }
+    setDeleteDialogOpen(false);
+    navigate('/', { replace: true, state: { notice: `${data.client.name} was deleted.` } });
+    return result;
+  });
 
   const createProject = useMutation(async (input: { name: string; description?: string }) => {
     const { project } = await clients.createProject(clientId, input);
@@ -342,6 +363,47 @@ export function ClientWorkspace() {
           </div>
         </>
       )}
+
+      {/* ── Client settings: deliberately last, never a primary action ── */}
+      <section aria-labelledby="client-settings-heading" className="border-t border-line pt-6">
+        <h2 id="client-settings-heading" className="text-2xs font-semibold uppercase tracking-[0.08em] text-ink">
+          Client settings
+        </h2>
+        <div className="mt-3 flex flex-col gap-3 rounded-xl border border-reject-line/80 bg-paper px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div className="min-w-0">
+            <p className="eyebrow text-reject">Danger zone</p>
+            <p className="mt-1.5 text-sm font-medium text-ink">Delete client</p>
+            <p className="mt-0.5 max-w-xl text-[0.8125rem] leading-relaxed text-ink-muted">
+              Permanently delete this client, all projects, decision history, recommendations, and
+              client memory.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn-secondary shrink-0 self-start border-reject-line text-reject hover:border-reject/60 hover:bg-reject-soft sm:self-auto"
+            onClick={() => {
+              removeClient.reset();
+              setDeleteDialogOpen(true);
+            }}
+          >
+            <Icon name="trash" className="h-4 w-4" />
+            Delete client…
+          </button>
+        </div>
+      </section>
+
+      <DeleteClientDialog
+        open={deleteDialogOpen}
+        clientName={client.name}
+        projectCount={projectList.length}
+        pending={removeClient.pending}
+        error={removeClient.error}
+        onCancel={() => {
+          removeClient.reset();
+          setDeleteDialogOpen(false);
+        }}
+        onConfirm={(token) => void removeClient.run(token)}
+      />
 
       <AddProjectDialog
         open={projectDialogOpen}

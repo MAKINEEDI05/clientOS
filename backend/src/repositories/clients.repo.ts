@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import { query, queryOne } from '../db/pool.js';
 import type { ClientRow, ProjectRow } from '../types/domain.js';
 
@@ -123,4 +124,56 @@ export async function createClient(input: {
   );
   if (!row) throw new Error('client insert returned no row');
   return row;
+}
+
+/* ── Client deletion ─────────────────────────────────────────────────────
+   These run inside the caller's transaction (see deleteClient in
+   clients.service), so they take that transaction's connection. Every
+   statement is scoped to one client id — never a slug, never unscoped. */
+
+export interface ClientForDeletion {
+  id: string;
+  slug: string;
+  name: string;
+  hindsight_bank_id: string;
+  project_count: number;
+}
+
+/**
+ * Load a client for deletion and lock its row until the transaction ends. A
+ * concurrent deletion of the same client waits here, then finds nothing.
+ */
+export async function lockClientForDeletion(
+  tx: PoolClient,
+  clientId: string,
+): Promise<ClientForDeletion | null> {
+  const { rows } = await tx.query<ClientForDeletion>(
+    `SELECT c.id, c.slug, c.name, c.hindsight_bank_id,
+            (SELECT count(*) FROM projects p WHERE p.client_id = c.id)::int AS project_count
+       FROM clients c
+      WHERE c.id = $1
+      FOR UPDATE OF c`,
+    [clientId],
+  );
+  return rows[0] ?? null;
+}
+
+/** How many clients point at a memory bank. A bank that belongs to one client returns 1. */
+export async function countClientsUsingBank(tx: PoolClient, bankId: string): Promise<number> {
+  const { rows } = await tx.query<{ n: number }>(
+    'SELECT count(*)::int AS n FROM clients WHERE hindsight_bank_id = $1',
+    [bankId],
+  );
+  return rows[0]?.n ?? 0;
+}
+
+/**
+ * Delete ONE client row by id. Its projects, interactions, memory references,
+ * memory links, conflicts, directives, recommendations and recommendation
+ * feedback are removed by the schema's ON DELETE CASCADE foreign keys.
+ * Returns the number of client rows deleted (0 or 1).
+ */
+export async function deleteClientById(tx: PoolClient, clientId: string): Promise<number> {
+  const result = await tx.query('DELETE FROM clients WHERE id = $1', [clientId]);
+  return result.rowCount ?? 0;
 }

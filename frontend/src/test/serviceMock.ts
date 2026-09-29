@@ -42,7 +42,7 @@ function memoriesFor(projectId: string): MemoryItem[] {
 export const health = { app: vi.fn(), memory: vi.fn() };
 export const clients = {
   list: vi.fn(), get: vi.fn(), memory: vi.fn(), conflicts: vi.fn(),
-  create: vi.fn(), createProject: vi.fn(),
+  create: vi.fn(), createProject: vi.fn(), remove: vi.fn(),
 };
 export const memories = { invalidate: vi.fn(), restore: vi.fn() };
 export const projects = {
@@ -72,6 +72,7 @@ export function resetServiceMock(): void {
     total: 12,
   });
   clients.createProject.mockResolvedValue({ project: MOBILE });
+  clients.remove.mockResolvedValue({ clientId: CLIENT.client.id, deletedProjects: CLIENT.projects.length });
 
   projects.get.mockImplementation(async (projectId: string) =>
     projectDetail(projectId === MOBILE.id ? MOBILE : WEBSITE, memoriesFor(projectId)));

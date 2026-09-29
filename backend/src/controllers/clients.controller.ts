@@ -4,7 +4,7 @@ import * as clientsRepo from '../repositories/clients.repo.js';
 import * as memoryRepo from '../repositories/memory.repo.js';
 import * as conflictsRepo from '../repositories/conflicts.repo.js';
 import { parseBody, parseIdParam, parseQuery } from '../middleware/validate.js';
-import { createClientWithBank } from '../services/clients.service.js';
+import { createClientWithBank, deleteClient } from '../services/clients.service.js';
 import { ok } from '../utils/respond.js';
 import { AppError } from '../utils/errors.js';
 import { MEMORY_STATES, MEMORY_TYPES } from '../types/domain.js';
@@ -173,4 +173,20 @@ export async function postClient(req: Request, res: Response): Promise<void> {
     },
     201,
   );
+}
+
+/**
+ * Permanently delete one client, its projects and everything recorded for them,
+ * and its Hindsight memory bank. Token-guarded at the route, like the demo reset.
+ *
+ * Addressed by client id (uuid) only: a slug or name is rejected with 400, so a
+ * deletion can never resolve to a client by display text.
+ */
+export async function deleteClientHandler(req: Request, res: Response): Promise<void> {
+  const clientId = parseIdParam(req.params.clientId, 'Client');
+  if (!clientsRepo.looksLikeUuid(clientId)) {
+    throw AppError.validation('Client identifier must be a client id (uuid).');
+  }
+  const result = await deleteClient(clientId);
+  ok(res, { clientId: result.clientId, deletedProjects: result.deletedProjects });
 }

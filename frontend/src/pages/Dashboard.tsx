@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAsync, useMutation } from '../hooks/useAsync';
 import { clients } from '../services/clientos';
 import { AddClientDialog } from '../components/AddClientDialog';
@@ -14,8 +14,24 @@ function totalMemory(c: ClientSummary): number {
   return Object.values(c.counts).reduce((sum, n) => sum + n, 0);
 }
 
+/** A one-time notice handed over by the page that navigated here, e.g. after a deletion. */
+function readNotice(state: unknown): string | null {
+  const notice = (state as { notice?: unknown } | null)?.notice;
+  return typeof notice === 'string' ? notice : null;
+}
+
 export function Dashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [notice, setNotice] = useState<string | null>(() => readNotice(location.state));
+
+  // Shown once: cleared from history so a refresh or Back does not repeat it.
+  useEffect(() => {
+    if (readNotice(location.state)) {
+      navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { data, loading, error, reload } = useAsync((signal) => clients.list(signal), []);
 
@@ -55,6 +71,21 @@ export function Dashboard() {
           </button>
         )}
       </header>
+
+      {notice && (
+        <div
+          role="status"
+          className="flex animate-fade-in items-center gap-3 rounded-xl border border-memory-line bg-memory-soft/60 px-4 py-3"
+        >
+          <span aria-hidden="true" className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-memory text-white">
+            <Icon name="check" className="h-3.5 w-3.5" strokeWidth={2.5} />
+          </span>
+          <p className="min-w-0 flex-1 text-sm font-medium text-ink">{notice}</p>
+          <button type="button" className="btn-ghost btn-sm -my-1 -mr-1.5 text-ink-muted" onClick={() => setNotice(null)}>
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {loading && <LoadingState label="Loading clients" />}
       {error !== null && <ErrorState error={error} onRetry={reload} />}

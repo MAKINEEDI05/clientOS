@@ -25,6 +25,8 @@ apiRouter.get('/health/hindsight', asyncHandler(health.getHindsightHealth));
 apiRouter.get('/clients', asyncHandler(clients.listClients));
 apiRouter.post('/clients', asyncHandler(clients.postClient));
 apiRouter.get('/clients/:clientId', asyncHandler(clients.getClient));
+// Destructive: same token guard as the demo reset. Client-scoped by uuid.
+apiRouter.delete('/clients/:clientId', requireDemoToken, asyncHandler(clients.deleteClientHandler));
 apiRouter.get('/clients/:clientId/memory', asyncHandler(clients.getClientMemory));
 apiRouter.get('/clients/:clientId/conflicts', asyncHandler(clients.getClientConflicts));
 apiRouter.post('/clients/:clientId/projects', asyncHandler(projects.postClientProject));

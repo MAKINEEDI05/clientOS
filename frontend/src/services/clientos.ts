@@ -1,6 +1,6 @@
 import { request } from '../lib/api';
 import type {
-  ClientDetail, ClientSummary, Conflict, CreateClientResult, DemoResetResult, HealthStatus,
+  ClientDetail, ClientSummary, Conflict, CreateClientResult, DeleteClientResult, DemoResetResult, HealthStatus,
   Interaction, InvalidateMemoryResult, MemoryItem, ProjectDetail, ProjectSummary,
   Recommendation, ResolveConflictResult, SubmitInteractionResult,
   ConflictScope, InteractionSource,
@@ -31,6 +31,17 @@ export const clients = {
   createProject: (clientId: string, body: { name: string; description?: string }) =>
     request<{ project: ProjectSummary }>(
       `/clients/${encodeURIComponent(clientId)}/projects`, { method: 'POST', body }),
+
+  /**
+   * Permanently delete a client, its projects, everything recorded for them and
+   * its memory bank. Addressed by client id, never slug. Like the demo reset, the
+   * server requires the admin token — supplied by the person at call time, never
+   * stored or bundled with the frontend.
+   */
+  remove: (clientId: string, token: string) =>
+    request<DeleteClientResult>(`/clients/${encodeURIComponent(clientId)}`, {
+      method: 'DELETE', headers: { 'x-demo-token': token },
+    }),
 };
 
 export const memories = {

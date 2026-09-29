@@ -210,3 +210,8 @@ export interface InvalidateMemoryResult {
   retiredInMemoryService: boolean;
   warnings: string[];
 }
+
+export interface DeleteClientResult {
+  clientId: string;
+  deletedProjects: number;
+}
